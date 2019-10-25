@@ -1,0 +1,48 @@
+{
+    "name": "isszz/blade",
+    "description": "think blade view engine",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "isszz",
+            "email": "isszz@qq.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.1",
+        "ext-json": "*",
+        "ext-fileinfo": "*",
+        "ext-mbstring": "*",
+        "ramsey/uuid": "^3.7",
+        "doctrine/inflector": "^1.1",
+        "symfony/debug": "^4.3.4",
+        "symfony/finder": "^4.3.4",
+        "topthink/framework": "6.0.*",
+        "topthink/think-helper": "^3.1.1"
+    },
+    "autoload": {
+        "files": [
+            "src/helper.php",
+            "src/Support/helpers.php"
+        ],
+        "classmap": [
+            "src/Blade.php"
+        ],
+        "psr-4": {
+            "isszz\\blade\\": "src/",
+            "Illuminate\\Container\\": "src/Container",
+            "Illuminate\\Contracts\\": "src/Contracts",
+            "Illuminate\\Support\\": "src/Support",
+            "Illuminate\\Filesystem\\": "src/Filesystem",
+            "Illuminate\\View\\": "src/View"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "dev-dev"
+        }
+    }
+}
