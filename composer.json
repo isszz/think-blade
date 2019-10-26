@@ -25,11 +25,8 @@
             "src/helper.php",
             "src/Support/helpers.php"
         ],
-        "classmap": [
-            "src/Blade.php"
-        ],
         "psr-4": {
-            "isszz\\blade\\": "src/",
+            "think\\view\\driver\\": "src",
             "Illuminate\\Container\\": "src/Container",
             "Illuminate\\Contracts\\": "src/Contracts",
             "Illuminate\\Support\\": "src/Support",

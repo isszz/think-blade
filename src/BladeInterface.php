@@ -1,6 +1,6 @@
 <?php
 
-namespace isszz\blade;
+namespace think\view\driver;
 
 use Illuminate\Contracts\View\Factory as FactoryInterface;
 use Illuminate\Contracts\View\View as ViewInterface;

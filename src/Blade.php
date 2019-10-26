@@ -9,8 +9,6 @@ use think\helper\Str;
 use think\contract\TemplateHandlerInterface;
 use think\template\exception\TemplateNotFoundException;
 
-use isszz\blade\BladeInstance;
-
 class Blade implements TemplateHandlerInterface
 {
     // Blade 引擎实例
