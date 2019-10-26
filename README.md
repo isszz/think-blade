@@ -3,8 +3,25 @@
 thinkphp6 blade view engine
 
 ## 安装
+
 ```shell
 composer require isszz/think-blade -vvv
+```
+
+## 配置
+
+```php
+<?php
+
+// 模板设置
+
+return [
+    // 这里切换为blade引擎
+    'type'          => 'Blade',
+    // 模版主题, blade新增
+    'view_theme' => '', // 留空为不启用, 设置后, 还可添加一套default主题作为备选
+    // 更多配置和Think相同, 部分blade无用
+];
 ```
 
 ## 容器注入
