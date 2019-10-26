@@ -78,6 +78,17 @@ View::if('app', function (...$apps) {
 @endapp
 ```
 
+## 需要使用到 auth 和 权限验证时, 需要自行实现一个 auth 挂载进 app 且实现下列方法
+
+```
+ * @method auth->check 判断当前用户是否登录
+ * @method auth->guest 判断当前用户是否为游客
+
+ * @method auth->can 用户是否有权限
+ * @method auth->cannot 用户不能执行这个权限
+ * @method auth->any 用户是否具有来自给定能力列表的任何授权能力
+```
+
 ## 更多用法参考 laravel blade 手册
 
 https://learnku.com/docs/laravel/6.x/blade/5147
