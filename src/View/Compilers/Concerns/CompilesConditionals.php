@@ -1,8 +1,12 @@
 <?php
 
 namespace Illuminate\View\Compilers\Concerns;
-
-/* 暂时无用 */
+/**
+ * 需要自行实现一个挂载进app的auth服务且实现如下方法
+ * 
+ * @method auth->check 判断当前用户是否登录
+ * @method auth->guest 判断当前用户是否为游客
+ */
 trait CompilesConditionals
 {
     /**
@@ -18,11 +22,9 @@ trait CompilesConditionals
      * @param  string|null  $guard
      * @return string
      */
-    protected function compileAuth($guard = null)
+    protected function compileAuth()
     {
-        $guard = is_null($guard) ? '()' : $guard;
-
-        return "<?php if(auth()->guard{$guard}->check()): ?>";
+        return "<?php if(app('auth')->check()): ?>";
     }
 
     /**
@@ -31,11 +33,9 @@ trait CompilesConditionals
      * @param  string|null  $guard
      * @return string
      */
-    protected function compileElseAuth($guard = null)
+    protected function compileElseAuth()
     {
-        $guard = is_null($guard) ? '()' : $guard;
-
-        return "<?php elseif(auth()->guard{$guard}->check()): ?>";
+        return "<?php elseif(app('auth')->check()): ?>";
     }
 
     /**
@@ -54,11 +54,9 @@ trait CompilesConditionals
      * @param  string|null  $guard
      * @return string
      */
-    protected function compileGuest($guard = null)
+    protected function compileGuest()
     {
-        $guard = is_null($guard) ? '()' : $guard;
-
-        return "<?php if(auth()->guard{$guard}->guest()): ?>";
+        return "<?php if(app('auth')->guest()): ?>";
     }
 
     /**
@@ -67,11 +65,9 @@ trait CompilesConditionals
      * @param  string|null  $guard
      * @return string
      */
-    protected function compileElseGuest($guard = null)
+    protected function compileElseGuest()
     {
-        $guard = is_null($guard) ? '()' : $guard;
-
-        return "<?php elseif(auth()->guard{$guard}->guest()): ?>";
+        return "<?php elseif(app('auth')->guest()): ?>";
     }
 
     /**

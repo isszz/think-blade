@@ -2,7 +2,13 @@
 
 namespace Illuminate\View\Compilers\Concerns;
 
-/* 暂时无用 */
+/**
+ * 需要自行实现一个挂载进app的auth服务且实现如下方法
+ * 
+ * @method auth->can 用户是否有权限
+ * @method auth->cannot 用户不能执行这个权限
+ * @method auth->any 用户是否具有来自给定能力列表的任何授权能力
+ */
 trait CompilesAuthorizations
 {
     /**
@@ -13,7 +19,7 @@ trait CompilesAuthorizations
      */
     protected function compileCan($expression)
     {
-        return "<?php if (app('auth')->check{$expression}): ?>";
+        return "<?php if (app('auth')->can{$expression}): ?>";
     }
 
     /**
@@ -24,7 +30,7 @@ trait CompilesAuthorizations
      */
     protected function compileCannot($expression)
     {
-        return "<?php if (app('auth')->denies{$expression}): ?>";
+        return "<?php if (app('auth')->cannot{$expression}): ?>";
     }
 
     /**
@@ -46,7 +52,7 @@ trait CompilesAuthorizations
      */
     protected function compileElsecan($expression)
     {
-        return "<?php elseif (app('auth')->check{$expression}): ?>";
+        return "<?php elseif (app('auth')->can{$expression}): ?>";
     }
 
     /**
@@ -57,7 +63,7 @@ trait CompilesAuthorizations
      */
     protected function compileElsecannot($expression)
     {
-        return "<?php elseif (app('auth')->denies{$expression}): ?>";
+        return "<?php elseif (app('auth')->cannot{$expression}): ?>";
     }
 
     /**
