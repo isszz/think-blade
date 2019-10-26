@@ -78,7 +78,7 @@ View::if('app', function (...$apps) {
 @endapp
 ```
 
-## 需要使用到 auth 和 权限验证时, 需要自行实现一个 auth 挂载进 app 且实现下列方法
+### 需要使用到 auth 和 权限验证时, 需要自行实现一个 auth 挂载进 app 且实现下列方法
 
 ```
  * @method auth->check 判断当前用户是否登录
