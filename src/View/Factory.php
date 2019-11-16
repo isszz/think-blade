@@ -118,9 +118,12 @@ class Factory implements FactoryContract
      */
     public function make($view, $data = [], $mergeData = [])
     {
-        $path = $this->finder->find(
+        // 转交给tp获取模版路径
+        $path = \think\facade\View::findView($view);
+
+        /*$path = $this->finder->find(
             $view = $this->normalizeName($view)
-        );
+        );*/
 
         // Next, we will create the view instance and call the view creator for the view
         // which can set any data, etc. Then we will return the view instance back to
