@@ -130,7 +130,7 @@ class Blade implements TemplateHandlerInterface
         $template = $this->viewName($template);
 
         if ('' == pathinfo($template, PATHINFO_EXTENSION)) {
-            $template = $this->parseTemplate($template);
+            $templatePath = $this->parseTemplate($template);
         }
 
         // 模板不存在 抛出异常
@@ -142,7 +142,7 @@ class Blade implements TemplateHandlerInterface
         $this->app['log']
             ->record('[ VIEW ] ' . $template . ' [ ' . var_export(array_keys($data), true) . ' ]');
 
-        echo $this->blade->file($template, $data)->render();
+        echo $this->blade->file($templatePath, $data)->render();
     }
 
     /**
