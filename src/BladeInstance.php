@@ -227,6 +227,32 @@ class BladeInstance implements BladeInterface
         return $this;
     }
 
+    /**`
+     * Prepend a location to the finder.
+     *
+     * @param  string  $path
+     * @return $this
+     */
+    public function prependPath($path): BladeInterface
+    {
+        $this->getViewFinder()->prependLocation($path);
+
+        return $this;
+    }
+
+    /**
+     * 移除重复的视图索引路径
+     *
+     * @return $this
+     */
+    public function uniquePath(): BladeInterface
+    {
+        $finder = $this->getViewFinder();
+        $finder->setPaths(array_unique($finder->getPaths()));
+
+        return $this;
+    }
+
     /**
      * Check if a view exists.
      *

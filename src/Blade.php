@@ -7,7 +7,6 @@ namespace think\view\driver;
 use think\App;
 use think\helper\Str;
 use think\contract\TemplateHandlerInterface;
-use think\template\exception\TemplateNotFoundException;
 
 class Blade implements TemplateHandlerInterface
 {
@@ -41,28 +40,12 @@ class Blade implements TemplateHandlerInterface
 
         $this->config = array_merge($this->config, $config);
 
-        if (empty($this->config['view_path'])) {
-            $view = $this->config['view_dir_name'];
-
-            if (is_dir($this->app->getAppPath() . $view)) {
-                $path = $this->app->getAppPath() . $view . DIRECTORY_SEPARATOR;
-            } else {
-                $appName = $this->app->http->getName();
-                $path    = $this->app->getRootPath() . $view . DIRECTORY_SEPARATOR . ($appName ? $appName . DIRECTORY_SEPARATOR : '');
-            }
-
-            $this->config['view_path'] = $path;
-        }
-
         if (empty($this->config['cache_path'])) {
             $this->config['cache_path'] = $app->getRuntimePath() . 'view' . DIRECTORY_SEPARATOR;
         }
 
-        // 设置模版主题路径
+        // 缓存主题路径
         if (!empty($this->config['view_theme'])) {
-            $view_base_path = $this->config['view_path'];
-            $this->config['view_path'] .= $this->config['view_theme'] . DIRECTORY_SEPARATOR;
-            // 缓存路径增加主题
             $this->config['cache_path'] .= $this->config['view_theme'] . DIRECTORY_SEPARATOR;
         }
 
@@ -73,31 +56,66 @@ class Blade implements TemplateHandlerInterface
 
         $this->config(array_merge($config, $this->config));
 
-        $this->blade = new BladeInstance($this->config['view_path'], $this->config['cache_path'], $this->config['tpl_cache']);
+        $this->blade = new BladeInstance('', $this->config['cache_path'], $this->config['tpl_cache']);
         $this->blade->getViewFactory();
+    }
 
-        // 设置默认模版路径, 备用
-        if (!empty($view_base_path)) {
-            $this->blade->addPath($view_base_path . 'default' . DIRECTORY_SEPARATOR);
+    /**
+     * 设置模板主题
+     *
+     * @param  string $path 模板文件路径
+     * @return bool
+     */
+    public function theme($path = '')
+    {
+        if (empty($this->config['view_theme'])) {
+            return $path;
         }
+
+        return $path .= $this->config['view_theme'] . DIRECTORY_SEPARATOR;
+    }
+
+    /**
+     * 根据模版获取实际路径
+     *
+     * @param  string $path 模板文件路径
+     * @return bool
+     */
+    public function findView($template = '')
+    {
+        $templatePath = '';
+
+        $template = $this->viewName($template);
+
+        if ('' == pathinfo($template, PATHINFO_EXTENSION)) {
+            $templatePath = $this->parseTemplate($template);
+        }
+
+        // 模板不存在 抛出异常
+        if (!$templatePath || !is_file($templatePath)) {
+            throw new ViewNotFoundException('View not exists:' . $this->viewName($template, true), $templatePath);
+        }
+
+        return $templatePath;
     }
 
     /**
      * 检测是否存在模板文件
      *
-     * @access public
      * @param  string $template 模板文件或者模板规则
      * @return bool
      */
     public function exists(string $template): bool
     {
+        $template = $this->viewName($template);
+
         if ('' == pathinfo($template, PATHINFO_EXTENSION)) {
             $template = $this->parseTemplate($template);
         }
 
         return is_file($template);
     }
-
+    
     /**
      * 渲染模板文件
      *
@@ -107,13 +125,17 @@ class Blade implements TemplateHandlerInterface
      */
     public function fetch(string $template, array $data = []): void
     {
+        $templatePath = '';
+
+        $template = $this->viewName($template);
+
         if ('' == pathinfo($template, PATHINFO_EXTENSION)) {
             $template = $this->parseTemplate($template);
         }
 
         // 模板不存在 抛出异常
-        if (!is_file($template)) {
-            throw new TemplateNotFoundException('template not exists:' . $template, $template);
+        if (!$templatePath || !is_file($templatePath)) {
+            throw new ViewNotFoundException('View not exists:' . $this->viewName($template, true), $templatePath);
         }
 
         // 记录视图信息
@@ -132,7 +154,8 @@ class Blade implements TemplateHandlerInterface
      */
     public function display(string $template, array $data = []): void
     {
-        echo $this->blade->make($template, $data)->render();
+        echo $this->fetch($template, $data);
+        // echo $this->blade->make($template, $data)->render();
     }
 
     /**
@@ -147,7 +170,7 @@ class Blade implements TemplateHandlerInterface
 
         // 获取视图根目录
         if (strpos($template, '@')) {
-            // 跨模块调用
+            // 跨应用调用
             list($app, $template) = explode('@', $template);
         }
 
@@ -155,13 +178,19 @@ class Blade implements TemplateHandlerInterface
             $path = $this->config['view_path'];
         } else {
             $appName = isset($app) ? $app : $this->app->http->getName();
-            $view    = $this->config['view_dir_name'];
+            $view = $this->config['view_dir_name'];
 
             if (is_dir($this->app->getAppPath() . $view)) {
                 $path = isset($app) ? $this->app->getBasePath() . ($appName ? $appName . DIRECTORY_SEPARATOR : '') . $view . DIRECTORY_SEPARATOR : $this->app->getAppPath() . $view . DIRECTORY_SEPARATOR;
             } else {
                 $path = $this->app->getRootPath() . $view . DIRECTORY_SEPARATOR . ($appName ? $appName . DIRECTORY_SEPARATOR : '');
             }
+        }
+
+        // 设置主题路径
+        if (!empty($this->config['view_theme'])) {
+            // default 主题备用
+            $path .= $this->config['view_theme'] . DIRECTORY_SEPARATOR;
         }
 
         $depr = $this->config['view_depr'];
@@ -215,8 +244,28 @@ class Blade implements TemplateHandlerInterface
     }
 
     /**
-     * 配置模板引擎
+     * Normalize the given template.
      *
+     * @param  string  $name
+     * @return string
+     */
+    private function viewName($template = '', $isRaw = false)
+    {
+
+        if($isRaw && strpos($template, '/')) {
+            return str_replace('/', '.', $template);
+        }
+
+        if (strpos($template, '.')) {
+            $template = str_replace('.', '/', $template);
+        }
+
+        return $template;
+    }
+
+    /**
+     * 配置模板引擎
+     * 
      * @param  array  $config 参数
      * @return void
      */

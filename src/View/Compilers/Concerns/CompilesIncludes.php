@@ -37,7 +37,7 @@ trait CompilesIncludes
     protected function compileIncludeIf($expression)
     {
         $expression = $this->stripParentheses($expression);
-
+        
         return "<?php if (\$__env->exists({$expression})) echo \$__env->make({$expression}, \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>";
     }
 
@@ -50,8 +50,19 @@ trait CompilesIncludes
     protected function compileIncludeWhen($expression)
     {
         $expression = $this->stripParentheses($expression);
-
         return "<?php echo \$__env->renderWhen($expression, \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path'])); ?>";
+    }
+
+    /**
+     * Compile the include-unless statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileIncludeUnless($expression)
+    {
+        $expression = $this->stripParentheses($expression);
+        return "<?php echo \$__env->renderWhen(! $expression, \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path'])); ?>";
     }
 
     /**
