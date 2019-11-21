@@ -29,13 +29,6 @@ class Factory implements FactoryContract
     protected $engines;
 
     /**
-     * The view finder implementation.
-     *
-     * @var \Illuminate\View\ViewFinderInterface
-     */
-    protected $finder;
-
-    /**
      * The IoC container instance.
      *
      * @var \Illuminate\Contracts\Container\Container
@@ -80,12 +73,10 @@ class Factory implements FactoryContract
      * Create a new view factory instance.
      *
      * @param  \Illuminate\View\Engines\EngineResolver  $engines
-     * @param  \Illuminate\View\ViewFinderInterface  $finder
      * @return void
      */
-    public function __construct(EngineResolver $engines, ViewFinderInterface $finder)
+    public function __construct(EngineResolver $engines)
     {
-        $this->finder = $finder;
         $this->engines = $engines;
 
         $this->share('__env', $this);
@@ -120,10 +111,6 @@ class Factory implements FactoryContract
     {
         // 转交给tp获取模版路径
         $path = \think\facade\View::findView($view);
-
-        /*$path = $this->finder->find(
-            $view = $this->normalizeName($view)
-        );*/
 
         // Next, we will create the view instance and call the view creator for the view
         // which can set any data, etc. Then we will return the view instance back to
@@ -255,13 +242,7 @@ class Factory implements FactoryContract
      */
     public function exists($view)
     {
-        try {
-            $this->finder->find($view);
-        } catch (InvalidArgumentException $e) {
-            return false;
-        }
-
-        return true;
+        return \think\facade\View::exists($view);
     }
 
     /**
@@ -347,59 +328,6 @@ class Factory implements FactoryContract
     }
 
     /**
-     * Add a location to the array of view locations.
-     *
-     * @param  string  $location
-     * @return void
-     */
-    public function addLocation($location)
-    {
-        $this->finder->addLocation($location);
-    }
-
-    /**
-     * Add a new namespace to the loader.
-     *
-     * @param  string  $namespace
-     * @param  string|array  $hints
-     * @return $this
-     */
-    public function addNamespace($namespace, $hints)
-    {
-        $this->finder->addNamespace($namespace, $hints);
-
-        return $this;
-    }
-
-    /**
-     * Prepend a new namespace to the loader.
-     *
-     * @param  string  $namespace
-     * @param  string|array  $hints
-     * @return $this
-     */
-    public function prependNamespace($namespace, $hints)
-    {
-        $this->finder->prependNamespace($namespace, $hints);
-
-        return $this;
-    }
-
-    /**
-     * Replace the namespace hints for the given namespace.
-     *
-     * @param  string  $namespace
-     * @param  string|array  $hints
-     * @return $this
-     */
-    public function replaceNamespace($namespace, $hints)
-    {
-        $this->finder->replaceNamespace($namespace, $hints);
-
-        return $this;
-    }
-
-    /**
      * Register a valid view extension and its engine.
      *
      * @param  string    $extension
@@ -409,8 +337,6 @@ class Factory implements FactoryContract
      */
     public function addExtension($extension, $engine, $resolver = null)
     {
-        $this->finder->addExtension($extension);
-
         if (isset($resolver)) {
             $this->engines->register($engine, $resolver);
         }
@@ -463,37 +389,6 @@ class Factory implements FactoryContract
     public function getEngineResolver()
     {
         return $this->engines;
-    }
-
-    /**
-     * Get the view finder instance.
-     *
-     * @return \Illuminate\View\ViewFinderInterface
-     */
-    public function getFinder()
-    {
-        return $this->finder;
-    }
-
-    /**
-     * Set the view finder instance.
-     *
-     * @param  \Illuminate\View\ViewFinderInterface  $finder
-     * @return void
-     */
-    public function setFinder(ViewFinderInterface $finder)
-    {
-        $this->finder = $finder;
-    }
-
-    /**
-     * Flush the cache of views located by the finder.
-     *
-     * @return void
-     */
-    public function flushFinderCache()
-    {
-        $this->getFinder()->flush();
     }
 
     /**

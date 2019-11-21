@@ -48,15 +48,6 @@ interface BladeInterface extends FactoryInterface
     public function if(string $name, callable $handler): self;
 
     /**
-     * Add a path to look for views in.
-     *
-     * @param string $path The path to look in
-     *
-     * @return $this
-     */
-    public function addPath(string $path): self;
-
-    /**
      * Check if a view exists.
      *
      * @param string $view The name of the view to check
@@ -94,26 +85,6 @@ interface BladeInterface extends FactoryInterface
      * @return array
      */
     public function creator($key, $value): array;
-
-    /**
-     * Add a new namespace to the loader.
-     *
-     * @param string $namespace The namespace to use
-     * @param array|string $hints The hints to apply
-     *
-     * @return $this
-     */
-    public function addNamespace($namespace, $hints): self;
-
-    /**
-     * Replace the namespace hints for the given namespace.
-     *
-     * @param string $namespace The namespace to replace
-     * @param array|string $hints The hints to use
-     *
-     * @return $this
-     */
-    public function replaceNamespace($namespace, $hints): self;
 
     /**
      * Get the evaluated view contents for the given path.

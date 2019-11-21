@@ -12,7 +12,7 @@ class ViewName
      */
     public static function normalize($name)
     {
-        $delimiter = ViewFinderInterface::HINT_PATH_DELIMITER;
+        $delimiter = '@'; // ::
 
         if (strpos($name, $delimiter) === false) {
             return str_replace('/', '.', $name);
@@ -20,6 +20,6 @@ class ViewName
 
         [$namespace, $name] = explode($delimiter, $name);
 
-        return $namespace.$delimiter.str_replace('/', '.', $name);
+        return $namespace . $delimiter . str_replace('/', '.', $name);
     }
 }

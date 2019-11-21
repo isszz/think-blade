@@ -30,7 +30,6 @@
             "Illuminate\\Container\\": "src/Container",
             "Illuminate\\Contracts\\": "src/Contracts",
             "Illuminate\\Support\\": "src/Support",
-            "Illuminate\\Filesystem\\": "src/Filesystem",
             "Illuminate\\View\\": "src/View"
         }
     },

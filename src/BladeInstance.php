@@ -10,7 +10,6 @@ use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Engines\FileEngine;
 use Illuminate\View\Engines\PhpEngine;
 use Illuminate\View\Factory;
-use Illuminate\View\FileViewFinder;
 use function is_dir;
 use function mkdir;
 
@@ -38,11 +37,6 @@ class BladeInstance implements BladeInterface
      * Factory|null The internal cache of the Factory to only instantiate it once.
      */
     private $factory;
-
-    /**
-     * FileViewFinder|null The internal cache of the FileViewFinder to only instantiate it once.
-     */
-    private $finder;
 
     /**
      * BladeCompiler|null The internal cache of the BladeCompiler to only instantiate it once.
@@ -90,20 +84,6 @@ class BladeInstance implements BladeInterface
     }
 
     /**
-     * Get the laravel view finder.
-     *
-     * @return FileViewFinder
-     */
-    private function getViewFinder(): FileViewFinder
-    {
-        if (!$this->finder) {
-            $this->finder = new FileViewFinder(new Filesystem, [$this->path]);
-        }
-
-        return $this->finder;
-    }
-
-    /**
      * Get the laravel view factory.
      *
      * @return Factory
@@ -113,7 +93,7 @@ class BladeInstance implements BladeInterface
         if ($this->factory) {
             return $this->factory;
         }
-        $this->factory = new Factory($this->getResolver(), $this->getViewFinder());
+        $this->factory = new Factory($this->getResolver());
 
         return $this->factory;
     }
@@ -202,58 +182,6 @@ class BladeInstance implements BladeInterface
     }
 
     /**
-     * 清空视图索引路径
-     *
-     * @return BladeInterface
-     */
-    public function resetPath(): BladeInterface
-    {
-        $this->getViewFinder()->setPaths([]);
-
-        return $this;
-    }
-
-    /**
-     * Add a path to look for views in.
-     *
-     * @param string $path The path to look in
-     *
-     * @return $this
-     */
-    public function addPath(string $path): BladeInterface
-    {
-        $this->getViewFinder()->addLocation($path);
-
-        return $this;
-    }
-
-    /**`
-     * Prepend a location to the finder.
-     *
-     * @param  string  $path
-     * @return $this
-     */
-    public function prependPath($path): BladeInterface
-    {
-        $this->getViewFinder()->prependLocation($path);
-
-        return $this;
-    }
-
-    /**
-     * 移除重复的视图索引路径
-     *
-     * @return $this
-     */
-    public function uniquePath(): BladeInterface
-    {
-        $finder = $this->getViewFinder();
-        $finder->setPaths(array_unique($finder->getPaths()));
-
-        return $this;
-    }
-
-    /**
      * Check if a view exists.
      *
      * @param string $view The name of the view to check
@@ -304,36 +232,6 @@ class BladeInstance implements BladeInterface
     public function creator($key, $value): array
     {
         return [];
-    }
-
-    /**
-     * Add a new namespace to the loader.
-     *
-     * @param string $namespace The namespace to use
-     * @param array|string $hints The hints to apply
-     *
-     * @return $this
-     */
-    public function addNamespace($namespace, $hints): BladeInterface
-    {
-        $this->getViewFactory()->addNamespace($namespace, $hints);
-
-        return $this;
-    }
-
-    /**
-     * Replace the namespace hints for the given namespace.
-     *
-     * @param string $namespace The namespace to replace
-     * @param array|string $hints The hints to use
-     *
-     * @return $this
-     */
-    public function replaceNamespace($namespace, $hints): BladeInterface
-    {
-        $this->getViewFactory()->replaceNamespace($namespace, $hints);
-
-        return $this;
     }
 
     /**
