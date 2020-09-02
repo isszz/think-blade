@@ -44,7 +44,7 @@ View::directive('time2str', function($expression) {
 });
 ```
 
-用法如法, 当然你也可以传递参数
+用法, 当然你也可以传递参数
 
 ```php
 @time2str(time(), 'Y-m-d H:i')
