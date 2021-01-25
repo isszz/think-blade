@@ -89,6 +89,53 @@ View::if('app', function (...$apps) {
  * @method auth->any 用户是否具有来自给定能力列表的任何授权能力
 ```
 
+###  试用中间件 挂载 auth 到 app
+
+```php
+/**
+ * 认证
+ */
+class Auth
+{
+    use Showmsg;
+    
+    protected $app;
+
+    public function __construct(App $app)
+    {
+        $this->app = $app;
+        $this->request = $this->app->request;
+    }
+
+    /**
+     * 初始化
+     *
+     * @param Request $request
+     * @param Closure $next
+     * @return Response
+     */
+    public function handle($request, Closure $next)
+    {
+        // 这个类自己实现, 需要用到的方法, 参见上面
+        $auth = new \app\admin\service\Auth($this->app);
+
+        // 容器注入
+        Container::getInstance()->bind('auth', $auth);
+        
+        // 在线用户信息, 未登录返回guest用户
+        $user = $auth->user();
+        
+        // 模版变量注入
+        View::assign([
+            'auth' => $auth,
+            'user' => $user,
+        ]);
+        
+        return $next($request);
+    }
+}
+```
+
 ## 更多用法参考 laravel blade 手册
 
 https://learnku.com/docs/laravel/6.x/blade/5147
