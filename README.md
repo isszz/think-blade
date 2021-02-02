@@ -89,7 +89,7 @@ View::if('app', function (...$apps) {
  * @method auth->any 用户是否具有来自给定能力列表的任何授权能力
 ```
 
-###  中间件 挂载 auth 到 app
+###  中间件 挂载 auth 到 app 案例
 
 ```php
 /**
@@ -97,8 +97,6 @@ View::if('app', function (...$apps) {
  */
 class Auth
 {
-    use Showmsg;
-    
     protected $app;
 
     public function __construct(App $app)
