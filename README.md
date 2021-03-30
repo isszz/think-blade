@@ -5,7 +5,7 @@ thinkphp6 blade view engine
 ## 安装
 
 ```shell
-composer require cfyun/think-blade -vvv
+composer require isszz/think-blade -vvv
 ```
 
 ## 配置
