@@ -174,10 +174,12 @@ class Blade implements TemplateHandlerInterface
             list($app, $template) = explode('@', $template);
         }
 
+        $requestApp = $this->app->http->getName();
+
         if ($this->config['view_path'] && !isset($app)) {
             $path = $this->config['view_path'];
         } else {
-            $appName = isset($app) ? $app : $this->app->http->getName();
+            $appName = isset($app) ? $app : $requestApp;
             $view = $this->config['view_dir_name'];
 
             if (is_dir($this->app->getAppPath() . $view)) {
@@ -227,20 +229,44 @@ class Blade implements TemplateHandlerInterface
 
         $template = $path . ltrim($template, '/') . '.' . ltrim($this->config['view_suffix'], '.');
 
-        // 模板不存在, 尝试默认模板
-        if (!is_file($template) && !empty($this->config['view_theme']) && $this->config['view_theme'] !== 'default') {
+        if (is_file($template)) {
+            return $template;
+        }
 
-            $default = str_replace(
-                DIRECTORY_SEPARATOR . $this->config['view_theme'] . DIRECTORY_SEPARATOR,
-                DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR, $template
-            );
-            
+        // 未设置主题, 尝试先去default查找
+        if(empty($this->config['view_theme'])) {
+
+            $default = str_replace(DIRECTORY_SEPARATOR .'view'. DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR .'view'. DIRECTORY_SEPARATOR .'default'. DIRECTORY_SEPARATOR, $template);
+
             if (is_file($default)) {
                 return $default;
             }
         }
 
-        return $template;
+        // 默认主题不存在模版, 降级删除default主题继续查找
+        if (strpos($template, DIRECTORY_SEPARATOR .'view'. DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR) !== false) {
+
+            $default = str_replace(DIRECTORY_SEPARATOR .'view'. DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR .'view'. DIRECTORY_SEPARATOR, $template);
+
+            if (is_file($default)) {
+                return $default;
+            }
+        }
+
+        // 已设置主题, 但是找不到模版, 尝试降级为default主题
+        if (strpos($template, DIRECTORY_SEPARATOR .'view'. DIRECTORY_SEPARATOR . $this->config['view_theme'] . DIRECTORY_SEPARATOR) !== false) {
+
+            $default = str_replace(
+                DIRECTORY_SEPARATOR . $this->config['view_theme'] . DIRECTORY_SEPARATOR,
+                DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR, $template
+            );
+
+            if (is_file($default)) {
+                return $default;
+            }
+        }
+
+        return '';
     }
 
     /**
