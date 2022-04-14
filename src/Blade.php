@@ -93,7 +93,20 @@ class Blade implements TemplateHandlerInterface
 
         // 模板不存在 抛出异常
         if (!$templatePath || !is_file($templatePath)) {
-            throw new ViewNotFoundException('View not exists:' . $this->viewName($template, true), $templatePath);
+
+            $app = $this->app->http->getName();
+            $controller = $this->app->request->controller();
+
+            $errorTemplate = $this->viewName($template, true);
+            if (strpos($template, '@') === false && strpos($template, '/') === false) {
+                $errorTemplate = $app .'@'. $controller .'.'. $errorTemplate;
+            }
+
+            throw new ViewNotFoundException(
+                'View not exists: ' . $errorTemplate,
+                $templatePath,
+                $this->app->http->getName() .'@'. $this->app->request->controller(),
+            );
         }
 
         return $templatePath;
