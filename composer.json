@@ -17,7 +17,7 @@
         "doctrine/inflector": "^1.1",
         "symfony/debug": "^4.3.4",
         "symfony/finder": "^4.3.4",
-        "topthink/framework": "6.0.*",
+        "topthink/framework": "^6.*",
         "topthink/think-helper": "^3.1.1"
     },
     "autoload": {
