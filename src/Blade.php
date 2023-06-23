@@ -105,7 +105,7 @@ class Blade implements TemplateHandlerInterface
             throw new ViewNotFoundException(
                 'View not exists: ' . $errorTemplate,
                 $templatePath,
-                $this->app->http->getName() .'@'. $this->app->request->controller(),
+                $this->app->http->getName() .'@'. $this->app->request->controller()
             );
         }
 
@@ -160,7 +160,7 @@ class Blade implements TemplateHandlerInterface
             throw new ViewNotFoundException(
                 'View not exists: ' . $errorTemplate,
                 $templatePath,
-                $this->app->http->getName() .'@'. $this->app->request->controller(),
+                $this->app->http->getName() .'@'. $this->app->request->controller()
             );
         }
 
