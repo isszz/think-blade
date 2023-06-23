@@ -99,7 +99,7 @@ class Blade implements TemplateHandlerInterface
 
             $errorTemplate = $this->viewName($template, true);
             if (strpos($template, '@') === false && strpos($template, '/') === false) {
-                $errorTemplate = $app .'@'. $controller .'.'. $errorTemplate;
+                $errorTemplate = $app .'@'. ($controller ? $controller .'.' : ''). $errorTemplate;
             }
 
             throw new ViewNotFoundException(
@@ -154,7 +154,7 @@ class Blade implements TemplateHandlerInterface
 
             $errorTemplate = $this->viewName($template, true);
             if (strpos($template, '@') === false && strpos($template, '/') === false) {
-                $errorTemplate = $app .'@'. $controller .'.'. $errorTemplate;
+                $errorTemplate = $app .'@'. ($controller ? $controller .'.' : ''). $errorTemplate;
             }
 
             throw new ViewNotFoundException(
