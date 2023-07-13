@@ -6,14 +6,16 @@ use ArrayAccess;
 use BadMethodCallException;
 use Exception;
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Macroable;
+use Stringable;
 use Throwable;
 
-class View implements ArrayAccess, ViewContract
+class View implements ArrayAccess, Htmlable, Stringable, ViewContract
 {
     use Macroable {
         __call as macroCall;
@@ -75,10 +77,66 @@ class View implements ArrayAccess, ViewContract
     }
 
     /**
+     * Get the evaluated contents of a given fragment.
+     *
+     * @param  string  $fragment
+     * @return string
+     */
+    public function fragment($fragment)
+    {
+        return $this->render(function () use ($fragment) {
+            return $this->factory->getFragment($fragment);
+        });
+    }
+
+    /**
+     * Get the evaluated contents for a given array of fragments.
+     *
+     * @param  array  $fragments
+     * @return string
+     */
+    public function fragments(array $fragments)
+    {
+        return collect($fragments)->map(fn ($f) => $this->fragment($f))->implode('');
+    }
+
+    /**
+     * Get the evaluated contents of a given fragment if the given condition is true.
+     *
+     * @param  bool  $boolean
+     * @param  string  $fragment
+     * @return string
+     */
+    public function fragmentIf($boolean, $fragment)
+    {
+        if (value($boolean)) {
+            return $this->fragment($fragment);
+        }
+
+        return $this->render();
+    }
+
+    /**
+     * Get the evaluated contents for a given array of fragments if the given condition is true.
+     *
+     * @param  bool  $boolean
+     * @param  array  $fragments
+     * @return string
+     */
+    public function fragmentsIf($boolean, array $fragments)
+    {
+        if (value($boolean)) {
+            return $this->fragments($fragments);
+        }
+
+        return $this->render();
+    }
+    
+    /**
      * Get the string contents of the view.
      *
      * @param  callable|null  $callback
-     * @return array|string
+     * @return string
      *
      * @throws \Throwable
      */
@@ -87,7 +145,7 @@ class View implements ArrayAccess, ViewContract
         try {
             $contents = $this->renderContents();
 
-            $response = isset($callback) ? call_user_func($callback, $this, $contents) : null;
+            $response = isset($callback) ? $callback($this, $contents) : null;
 
             // Once we have the contents of the view, we will flush the sections if we are
             // done rendering all views so that there is nothing left hanging over when
@@ -95,10 +153,6 @@ class View implements ArrayAccess, ViewContract
             $this->factory->flushStateIfDoneRendering();
 
             return ! is_null($response) ? $response : $contents;
-        } catch (Exception $e) {
-            $this->factory->flushState();
-
-            throw $e;
         } catch (Throwable $e) {
             $this->factory->flushState();
 
@@ -280,7 +334,7 @@ class View implements ArrayAccess, ViewContract
      * @param  string  $key
      * @return bool
      */
-    public function offsetExists($key)
+    public function offsetExists($key): bool
     {
         return array_key_exists($key, $this->data);
     }
@@ -291,7 +345,7 @@ class View implements ArrayAccess, ViewContract
      * @param  string  $key
      * @return mixed
      */
-    public function offsetGet($key)
+    public function offsetGet($key): mixed
     {
         return $this->data[$key];
     }
@@ -303,7 +357,7 @@ class View implements ArrayAccess, ViewContract
      * @param  mixed   $value
      * @return void
      */
-    public function offsetSet($key, $value)
+    public function offsetSet($key, $value): void
     {
         $this->with($key, $value);
     }
@@ -314,7 +368,7 @@ class View implements ArrayAccess, ViewContract
      * @param  string  $key
      * @return void
      */
-    public function offsetUnset($key)
+    public function offsetUnset($key): void
     {
         unset($this->data[$key]);
     }
@@ -379,13 +433,23 @@ class View implements ArrayAccess, ViewContract
             return $this->macroCall($method, $parameters);
         }
 
-        if (! Str::startsWith($method, 'with')) {
+        if (! str_starts_with($method, 'with')) {
             throw new BadMethodCallException(sprintf(
                 'Method %s::%s does not exist.', static::class, $method
             ));
         }
 
         return $this->with(Str::camel(substr($method, 4)), $parameters[0]);
+    }
+
+    /**
+     * Get content as a string of HTML.
+     *
+     * @return string
+     */
+    public function toHtml()
+    {
+        return $this->render();
     }
 
     /**

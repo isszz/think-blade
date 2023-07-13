@@ -1,6 +1,6 @@
 {
     "name": "isszz/think-blade",
-    "description": "think blade view engine",
+    "description": "thinkphp8 blade view engine",
     "license": "MIT",
     "authors": [
         {
@@ -9,16 +9,15 @@
         }
     ],
     "require": {
-        "php": ">=7.1",
+        "php": "^8.0",
         "ext-json": "*",
         "ext-fileinfo": "*",
         "ext-mbstring": "*",
-        "ramsey/uuid": "^3.7",
-        "doctrine/inflector": "^1.1",
+        "ramsey/uuid": "^4.7",
+        "doctrine/inflector": "^2.0",
         "symfony/debug": "^4.3.4",
         "symfony/finder": "^4.3.4",
-        "topthink/framework": "6.*",
-        "topthink/think-helper": "^3.1.1"
+        "topthink/framework": "8.*"
     },
     "autoload": {
         "files": [
@@ -26,6 +25,7 @@
             "src/Support/helpers.php"
         ],
         "psr-4": {
+            "think\\blade\\": "src",
             "think\\view\\driver\\": "src",
             "Illuminate\\Container\\": "src/Container",
             "Illuminate\\Contracts\\": "src/Contracts",
@@ -37,7 +37,13 @@
     "config": {
         "sort-packages": true
     },
+    "minimum-stability": "dev",
     "extra": {
+        "think": {
+            "services": [
+                "think\\blade\\BladeService"
+            ]
+        },
         "branch-alias": {
             "dev-master": "dev-dev"
         }

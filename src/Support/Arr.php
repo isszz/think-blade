@@ -600,6 +600,52 @@ class Arr
     }
 
     /**
+     * Conditionally compile classes from an array into a CSS class list.
+     *
+     * @param  array  $array
+     * @return string
+     */
+    public static function toCssClasses($array)
+    {
+        $classList = static::wrap($array);
+
+        $classes = [];
+
+        foreach ($classList as $class => $constraint) {
+            if (is_numeric($class)) {
+                $classes[] = $constraint;
+            } elseif ($constraint) {
+                $classes[] = $class;
+            }
+        }
+
+        return implode(' ', $classes);
+    }
+
+    /**
+     * Conditionally compile styles from an array into a style list.
+     *
+     * @param  array  $array
+     * @return string
+     */
+    public static function toCssStyles($array)
+    {
+        $styleList = static::wrap($array);
+
+        $styles = [];
+
+        foreach ($styleList as $class => $constraint) {
+            if (is_numeric($class)) {
+                $styles[] = Str::finish($constraint, ';');
+            } elseif ($constraint) {
+                $styles[] = Str::finish($class, ';');
+            }
+        }
+
+        return implode(' ', $styles);
+    }
+    
+    /**
      * Filter the array using the given callback.
      *
      * @param  array  $array
@@ -609,6 +655,17 @@ class Arr
     public static function where($array, callable $callback)
     {
         return array_filter($array, $callback, ARRAY_FILTER_USE_BOTH);
+    }
+
+    /**
+     * Filter items where the value is not null.
+     *
+     * @param  array  $array
+     * @return array
+     */
+    public static function whereNotNull($array)
+    {
+        return static::where($array, fn ($value) => ! is_null($value));
     }
 
     /**

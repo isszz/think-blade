@@ -10,7 +10,7 @@ interface Factory
      * @param  string  $view
      * @return bool
      */
-    public function exists($view);
+    public function exists(string $view): bool;
 
     /**
      * Get the evaluated view contents for the given path.
@@ -40,22 +40,4 @@ interface Factory
      * @return mixed
      */
     public function share($key, $value = null);
-
-    /**
-     * Register a view composer event.
-     *
-     * @param  array|string  $views
-     * @param  \Closure|string  $callback
-     * @return array
-     */
-    public function composer($views, $callback);
-
-    /**
-     * Register a view creator event.
-     *
-     * @param  array|string  $views
-     * @param  \Closure|string  $callback
-     * @return array
-     */
-    public function creator($views, $callback);
 }

@@ -2,7 +2,8 @@
 
 namespace Illuminate\View;
 
-use Illuminate\Contracts\Container\Container;
+use think\Container;
+// use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\View\Factory as FactoryContract;
 use Illuminate\Support\Arr;
@@ -10,16 +11,40 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Macroable;
 use Illuminate\View\Engines\EngineResolver;
 use InvalidArgumentException;
+
+use think\view\driver\ViewNotFoundException;
+
 use function Illuminate\Support\tap;
+
+use think\App;
 
 class Factory implements FactoryContract
 {
     use Macroable,
         Concerns\ManagesComponents,
+        Concerns\ManagesFragments,
         Concerns\ManagesLayouts,
         Concerns\ManagesLoops,
         Concerns\ManagesStacks,
         Concerns\ManagesTranslations;
+
+    // 模板引擎参数
+    protected $config = [
+        // 视图目录名
+        'dir_name' => 'view',
+        // 模版主题
+        'theme' => '',
+        // 模板起始路径
+        'base_path' => '',
+        // 模板文件后缀
+        'suffix' => 'blade.php',
+        // 模板文件名分隔符
+        'depr' => DS,
+        // 缓存路径
+        'compiled' => '',
+        // 是否开启模板编译缓存,设为false则每次都会重新编译
+        'cache' => true,
+    ];
 
     /**
      * The engine implementation.
@@ -29,9 +54,16 @@ class Factory implements FactoryContract
     protected $engines;
 
     /**
+     * The view finder implementation.
+     *
+     * @var \Illuminate\View\ViewFinderInterface
+     */
+    protected $finder;
+
+    /**
      * The IoC container instance.
      *
-     * @var \Illuminate\Contracts\Container\Container
+     * @var \think\Container
      */
     protected $container;
 
@@ -70,16 +102,350 @@ class Factory implements FactoryContract
     protected $renderCount = 0;
 
     /**
+     * The "once" block IDs that have been rendered.
+     *
+     * @var array
+     */
+    protected $renderedOnce = [];
+
+    protected $app;
+
+    /**
      * Create a new view factory instance.
      *
      * @param  \Illuminate\View\Engines\EngineResolver  $engines
+     * @param  \Illuminate\View\ViewFinderInterface  $finder
      * @return void
      */
-    public function __construct(EngineResolver $engines)
+    public function __construct(EngineResolver $engines, $finder, App $app)
     {
+        $this->app = $app;
+        $this->finder = $finder;
         $this->engines = $engines;
 
+        $config = $this->app->get('config')->get('view');
+
+        $this->config = array_merge($this->config, $config);
+
+        if (empty($this->config['compiled'])) {
+            $this->config['compiled'] = $app->getRuntimePath();
+        }
+
+        // 缓存主题路径
+        if (!empty($this->config['theme'])) {
+            $this->config['compiled'] .= $this->config['theme'] . DS;
+        }
+
+        // default view path
+        $cutrrentApp = $this->app->http->getName();
+
+        if ($this->config['base_path']) {
+            $path = $this->config['base_path'];
+        } else {
+            $appName = $cutrrentApp;
+            $view = $this->config['dir_name'];
+
+            if (is_dir($this->app->getAppPath() . $view)) {
+                $path = $this->app->getAppPath() . $view . DS;
+            } else {
+                $path = $this->app->getRootPath() . $view . DS . ($appName ? $appName . DS : '');
+            }
+        }
+
+        // 设置主题路径
+        if (!empty($this->config['theme'])) {
+            // default 主题备用
+            $path .= $this->config['theme'] . DS;
+        }
+
+
+        // dd($path);
+        // $finder->addLocation($path); //  . 'components'. DS
+
+        // debug 不缓存
+        if ($this->app->isDebug()) {
+            // $this->config['cache'] = false;
+        }
+
         $this->share('__env', $this);
+    }
+
+    /**
+     * 设置模板主题
+     *
+     * @param  string $path 模板文件路径
+     * @return bool
+     */
+    public function theme($path = '')
+    {
+        if (empty($this->config['theme'])) {
+            return $path;
+        }
+
+        return $path .= $this->config['theme'] . DS;
+    }
+
+    /**
+     * 根据模版获取实际路径
+     *
+     * @param  string $path 模板文件路径
+     * @return bool
+     */
+    public function findView($template = '')
+    {
+        $templatePath = '';
+
+        $template = $this->viewName($template);
+
+        if ('' == pathinfo($template, PATHINFO_EXTENSION)) {
+            $templatePath = $this->parseTemplate($template);
+        }
+
+        // 模板不存在 抛出异常
+        if (!$templatePath || !is_file($templatePath)) {
+            throw new ViewNotFoundException('View not exists:' . $this->viewName($template, true), $templatePath);
+        }
+
+        return $templatePath;
+    }
+
+
+    /**
+     * 检测是否存在模板文件
+     *
+     * @param  string $view 模板文件或者模板规则
+     * @return bool
+     */
+    public function exists(string $view): bool
+    {
+        $view = $this->viewName($view);
+
+        if ('' == pathinfo($view, PATHINFO_EXTENSION)) {
+            $view = $this->parseTemplate($view);
+        }
+
+        return is_file($view);
+    }
+
+    /**
+     * Get the evaluated view contents for the given view.
+     *
+     * @param  string  $view
+     * @param  \Illuminate\Contracts\Support\Arrayable|array   $data
+     * @param  array   $mergeData
+     * @return \Illuminate\Contracts\View\View
+     */
+    public function make($view, $data = [], $mergeData = [])
+    {
+        if (is_file($view)) {
+            $path = $view;
+        } else {
+            $path = '';
+            // $view = ViewName::normalize2($view);
+
+            $view = $this->viewName($view);
+
+            if ('' == pathinfo($view, PATHINFO_EXTENSION)) {
+                $path = $this->parseTemplate($view);
+            }
+
+            if (!$path || !is_file($path)) {
+                $path = $this->finder->find(
+                    $this->normalizeName($view)
+                );
+            }
+        }
+
+        // 模板不存在 抛出异常
+        if (!$path || !is_file($path)) {
+            throw new ViewNotFoundException('View not exists:' . $this->viewName($view, true), $path);
+        }
+
+        // 记录视图信息
+        $this->app['log']
+            ->record('[ VIEW ] ' . $view . ' [ ' . var_export(array_keys($data), true) . ' ]');
+
+        // Next, we will create the view instance and call the view creator for the view
+        // which can set any data, etc. Then we will return the view instance back to
+        // the caller for rendering or performing other view manipulations on this.
+        $data = array_merge($mergeData, $this->parseData($data));
+
+        return tap($this->viewInstance($path, $path, $data), function ($view) {
+            $this->callCreator($view);
+        });
+    }
+
+    /**
+     * 渲染模板内容
+     *
+     * @param  string $view 模板内容
+     * @param  array  $data 模板变量
+     * @param  array   $mergeData
+     * @return void
+     */
+    public function display(string $view, array $data = [], array $mergeData = [])
+    {
+        $path = $this->finder->find(
+            $this->normalizeName($view)
+        );
+
+        return $this->make($path, $data, $mergeData);
+    }
+
+    /**
+     * 渲染模板文件 | think
+     *
+     * @param string $view 模板文件
+     * @param array  $data     模板变量
+     * @param  array   $mergeData
+     * @return void
+     */
+    public function fetch(string $view, array $data = [], array $mergeData = [])
+    {
+        return $this->make($view, $data, $mergeData);
+    }
+
+    /**
+     * 获取模版所在基础路径
+     *
+     * @param string $template 模板文件规则
+     * @return string
+     */
+    private function parseBasePath(string $template): string
+    {
+        // 获取视图根目录
+        if (strpos($template, '@')) {
+            // 跨应用调用
+            [$app, $template] = explode('@', $template);
+        }
+
+        $cutrrentApp = $this->app->http->getName();
+
+        if ($this->config['base_path'] && !isset($app)) {
+            $path = $this->config['base_path'];
+        } else {
+            $appName = isset($app) ? $app : $cutrrentApp;
+            $view = $this->config['dir_name'];
+
+            if (is_dir($this->app->getAppPath() . $view)) {
+                $path = isset($app) ? $this->app->getBasePath() . ($appName ? $appName . DS : '') . $view . DS : $this->app->getAppPath() . $view . DS;
+            } else {
+                $path = $this->app->getRootPath() . $view . DS . ($appName ? $appName . DS : '');
+            }
+        }
+
+        // 设置主题路径
+        if (!empty($this->config['theme'])) {
+            // default 主题备用
+            $path .= $this->config['theme'] . DS;
+        }
+
+        return $path;
+    }
+
+    /**
+     * 自动定位模板文件
+     *
+     * @param string $template 模板文件规则
+     * @return string
+     */
+    private function parseTemplate(string $template): string
+    {
+        $depr = $this->config['depr'];
+        $request = $this->app->request;
+        $path = $this->parseBasePath($template);
+
+        if (0 !== strpos($template, '/')) {
+            $template   = str_replace(['/', ':'], $depr, $template);
+            $controller = $request->controller();
+            if (strpos($controller, '.')) {
+                $pos        = strrpos($controller, '.');
+                $controller = substr($controller, 0, $pos) . '.' . Str::snake(substr($controller, $pos + 1));
+            } else {
+                $controller = Str::snake($controller);
+            }
+
+            if ($controller) {
+                if ('' == $template) {
+                    // 如果模板文件名为空 按照默认规则定位
+                    if (2 == $this->config['auto_rule']) {
+                        $template = $request->action(true);
+                    } elseif (3 == $this->config['auto_rule']) {
+                        $template = $request->action();
+                    } else {
+                        $template = Str::snake($request->action());
+                    }
+
+                    $template = str_replace('.', DS, $controller) . $depr . $template;
+                } elseif (false === strpos($template, $depr)) {
+                    $template = str_replace('.', DS, $controller) . $depr . $template;
+                }
+            }
+        } else {
+            $template = str_replace(['/', ':'], $depr, substr($template, 1));
+        }
+
+        $template = $path . ltrim($template, '/') . '.' . ltrim($this->config['suffix'], '.');
+
+        if (is_file($template)) {
+            return $template;
+        }
+
+        // dd($template);
+        // 未设置主题, 尝试先去default查找
+        if(empty($this->config['theme'])) {
+
+            $default = str_replace(DS .'view'. DS, DS .'view'. DS .'default'. DS, $template);
+
+            if (is_file($default)) {
+                return $default;
+            }
+        }
+
+        // 默认主题不存在模版, 降级删除default主题继续查找
+        if (strpos($template, DS .'view'. DS . 'default' . DS) !== false) {
+
+            $default = str_replace(DS .'view'. DS . 'default' . DS, DS .'view'. DS, $template);
+
+            if (is_file($default)) {
+                return $default;
+            }
+        }
+
+        // 已设置主题, 但是找不到模版, 尝试降级为default主题
+        if (strpos($template, DS .'view'. DS . $this->config['theme'] . DS) !== false) {
+
+            $default = str_replace(
+                DS . $this->config['theme'] . DS,
+                DS . 'default' . DS, $template
+            );
+
+            if (is_file($default)) {
+                return $default;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Normalize the given template.
+     *
+     * @param  string  $name
+     * @return string
+     */
+    private function viewName($template = '', $isRaw = false)
+    {
+
+        if($isRaw && strpos($template, '/')) {
+            return str_replace('/', '.', $template);
+        }
+
+        if (strpos($template, '.')) {
+            $template = str_replace('.', '/', $template);
+        }
+
+        return $template;
     }
 
     /**
@@ -99,28 +465,6 @@ class Factory implements FactoryContract
         });
     }
 
-    /**
-     * Get the evaluated view contents for the given view.
-     *
-     * @param  string  $view
-     * @param  \Illuminate\Contracts\Support\Arrayable|array   $data
-     * @param  array   $mergeData
-     * @return \Illuminate\Contracts\View\View
-     */
-    public function make($view, $data = [], $mergeData = [])
-    {
-        // 转交给tp获取模版路径
-        $path = \think\facade\View::findView($view);
-
-        // Next, we will create the view instance and call the view creator for the view
-        // which can set any data, etc. Then we will return the view instance back to
-        // the caller for rendering or performing other view manipulations on this.
-        $data = array_merge($mergeData, $this->parseData($data));
-
-        return tap($this->viewInstance($view, $path, $data), function ($view) {
-            $this->callCreator($view);
-        });
-    }
 
     /**
      * Get the first view that actually exists from the given list.
@@ -234,16 +578,6 @@ class Factory implements FactoryContract
         return new View($this, $this->getEngineFromPath($path), $view, $path, $data);
     }
 
-    /**
-     * Determine if a given view exists.
-     *
-     * @param  string  $view
-     * @return bool
-     */
-    public function exists($view)
-    {
-        return \think\facade\View::exists($view);
-    }
 
     /**
      * Get the appropriate view engine for the given path.
@@ -260,6 +594,7 @@ class Factory implements FactoryContract
         }
 
         $engine = $this->extensions[$extension];
+
 
         return $this->engines->resolve($engine);
     }
@@ -298,6 +633,18 @@ class Factory implements FactoryContract
     }
 
     /**
+     * Add a piece of shared data to the environment.
+     *
+     * @param  array|string  $key
+     * @param  mixed|null  $value
+     * @return mixed
+     */
+    public function assign($key, $value = null)
+    {
+        return $this->share($key, $value);
+    }
+
+    /**
      * Increment the rendering counter.
      *
      * @return void
@@ -328,6 +675,81 @@ class Factory implements FactoryContract
     }
 
     /**
+     * Determine if the given once token has been rendered.
+     *
+     * @param  string  $id
+     * @return bool
+     */
+    public function hasRenderedOnce(string $id)
+    {
+        return isset($this->renderedOnce[$id]);
+    }
+
+    /**
+     * Mark the given once token as having been rendered.
+     *
+     * @param  string  $id
+     * @return void
+     */
+    public function markAsRenderedOnce(string $id)
+    {
+        $this->renderedOnce[$id] = true;
+    }
+
+    /**
+     * Add a location to the array of view locations.
+     *
+     * @param  string  $location
+     * @return void
+     */
+    public function addLocation($location)
+    {
+        $this->finder->addLocation($location);
+    }
+
+    /**
+     * Add a new namespace to the loader.
+     *
+     * @param  string  $namespace
+     * @param  string|array  $hints
+     * @return $this
+     */
+    public function addNamespace($namespace, $hints)
+    {
+        $this->finder->addNamespace($namespace, $hints);
+
+        return $this;
+    }
+
+    /**
+     * Prepend a new namespace to the loader.
+     *
+     * @param  string  $namespace
+     * @param  string|array  $hints
+     * @return $this
+     */
+    public function prependNamespace($namespace, $hints)
+    {
+        $this->finder->prependNamespace($namespace, $hints);
+
+        return $this;
+    }
+
+    /**
+     * Replace the namespace hints for the given namespace.
+     *
+     * @param  string  $namespace
+     * @param  string|array  $hints
+     * @return $this
+     */
+    public function replaceNamespace($namespace, $hints)
+    {
+        $this->finder->replaceNamespace($namespace, $hints);
+
+        return $this;
+    }
+
+    /**
      * Register a valid view extension and its engine.
      *
      * @param  string    $extension
@@ -354,9 +776,11 @@ class Factory implements FactoryContract
     public function flushState()
     {
         $this->renderCount = 0;
+        $this->renderedOnce = [];
 
         $this->flushSections();
         $this->flushStacks();
+        $this->flushFragments();
     }
 
     /**
@@ -394,7 +818,7 @@ class Factory implements FactoryContract
     /**
      * Get the IoC container instance.
      *
-     * @return \Illuminate\Contracts\Container\Container
+     * @return \think\Container
      */
     public function getContainer()
     {
@@ -404,7 +828,7 @@ class Factory implements FactoryContract
     /**
      * Set the IoC container instance.
      *
-     * @param  \Illuminate\Contracts\Container\Container  $container
+     * @param  \think\Container  $container
      * @return void
      */
     public function setContainer(Container $container)
@@ -432,32 +856,6 @@ class Factory implements FactoryContract
     public function getShared()
     {
         return $this->shared;
-    }
-
-    /**
-     * ManagesEvents
-     * Register a view composer event.
-     *
-     * @param array|string    $views
-     * @param \Closure|string $callback
-     * @return array
-     */
-    public function composer($views, $callback)
-    {
-        return [];
-    }
-
-    /**
-     * ManagesEvents
-     * Register a view creator event.
-     *
-     * @param array|string    $views
-     * @param \Closure|string $callback
-     * @return array
-     */
-    public function creator($views, $callback)
-    {
-        return [];
     }
 
     /**

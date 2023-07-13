@@ -11,7 +11,11 @@ trait CompilesHelpers
      */
     protected function compileCsrf($arguments)
     {
-        return "<?php echo token{$arguments}; ?>";
+        if (is_null($arguments)) {
+            return "<?php echo csrf_field(); ?>";
+        }
+        
+        return "<?php echo csrf_field{$arguments}; ?>";
     }
 
     /**

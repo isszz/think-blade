@@ -5,6 +5,8 @@ namespace Illuminate\View\Compilers;
 use Illuminate\Filesystem\Filesystem;
 use InvalidArgumentException;
 
+use function Illuminate\Support\hash_fit;
+
 abstract class Compiler
 {
     /**
@@ -29,6 +31,13 @@ abstract class Compiler
     protected $isCache;
 
     /**
+     * The compiled view file extension.
+     *
+     * @var string
+     */
+    protected $compiledExtension = 'php';
+    
+    /**
      * Create a new compiler instance.
      *
      * @param  \Illuminate\Filesystem\Filesystem  $files
@@ -37,14 +46,34 @@ abstract class Compiler
      *
      * @throws \InvalidArgumentException
      */
-    public function __construct(Filesystem $files, $cachePath, $isCache = true)
+    public function __construct(Filesystem $files/*, $cachePath, $isCache = true, $compiledExtension = 'php'*/)
     {
+        $this->files = $files;
+
+        $config = app('config')->get('view');
+
+        /*
         if (! $cachePath) {
             throw new InvalidArgumentException('Please provide a valid cache path.');
+        }*/
+
+        if (empty($config['compiled'])) {
+            $config['compiled'] = app()->getRuntimePath(); //  . 'view' . DS
         }
 
-        $this->files = $files;
-        $this->cachePath = $cachePath;
+        $this->cachePath = $config['compiled'];
+        $this->isCache = $config['cache'] ?? false;
+        $this->compiledExtension = $config['compiled_extension'] ?? 'php';
+
+        $theme = $config['theme'] ?? '';
+
+        // 设置到view文件夹
+        $this->cachePath = $this->cachePath .'view'. DS;
+
+        // 如果有主题, 则增加主题文件夹
+        if ($theme) {
+            $this->cachePath = $this->cachePath . $theme . DS;
+        }
     }
 
     /**
@@ -55,7 +84,9 @@ abstract class Compiler
      */
     public function getCompiledPath($path)
     {
-        return $this->cachePath . '/' . sha1($path) . '.' . basename($path);
+        // preg_match("/;app;([a-zA-Z]+);view;([a-zA-Z]+);/", str_replace('\\', ';', $path), $appendPaths);
+        // return $this->cachePath . '/' . sha1($path) . '.' . basename($path) .'.'. $this->compiledExtension;
+        return $this->cachePath .'/'. hash_fit('v2'. basename($path)) .'.'. $this->compiledExtension;
     }
 
     /**
@@ -81,5 +112,18 @@ abstract class Compiler
 
         return $this->files->lastModified($path) >=
                $this->files->lastModified($compiled);
+    }
+
+    /**
+     * Create the compiled file directory if necessary.
+     *
+     * @param  string  $path
+     * @return void
+     */
+    protected function ensureCompiledDirectoryExists($path)
+    {
+        if (! $this->files->exists(dirname($path))) {
+            $this->files->makeDirectory(dirname($path), 0777, true, true);
+        }
     }
 }

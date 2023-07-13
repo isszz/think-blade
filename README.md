@@ -1,11 +1,11 @@
 
 # blade
-thinkphp6 blade view engine
+thinkphp8 blade view engine
 
 ## 安装
 
 ```shell
-composer require isszz/think-blade -vvv
+composer require isszz/think-blade
 ```
 
 ## 配置
@@ -13,14 +13,23 @@ composer require isszz/think-blade -vvv
 ```php
 <?php
 
-// 模板设置
+// view.php 模板配置, 多应用时, 每个应用的配置可以不同
 
 return [
-    // 这里切换为blade引擎
-    'type'          => 'Blade',
-    // 模版主题, blade新增
-    'view_theme' => '', // 留空为不启用, 设置后, 还可添加一套default主题作为备选
-    // 更多配置和Think相同, 部分blade无用
+    // 视图目录名
+    'dir_name' => 'view',
+    // 模版主题
+    'theme' => '',
+    // 模板起始路径
+    'base_path' => '',
+    // 模板文件后缀
+    'suffix' => 'blade.php',
+    // 模板文件名分隔符
+    'depr' => DIRECTORY_SEPARATOR,
+    // 缓存路径
+    'compiled' => '', // 默认留空使用runtime目录
+    // 是否开启模板编译缓存, 设为false则每次都会重新编译
+    'cache' => true,
 ];
 ```
 
@@ -39,8 +48,10 @@ return [
 Blade 允许你使用 directive 方法自定义指令。当 Blade 编译器遇到自定义指令时，这会调用该指令包含的表达式提供的回调。
 
 ```php
-View::directive('time2str', function($expression) {
-  return "<?php echo think\Helper::time2str($expression); ?>";
+use think\blade\facade\Blade;
+
+Blade::directive('time2str', function($expression) {
+  return "<?php echo \Helper::time2str($expression); ?>";
 });
 ```
 
@@ -55,14 +66,16 @@ View::directive('time2str', function($expression) {
 在定义简单的、自定义条件语句时，编写自定义指令比必须的步骤复杂。在这种情况下，think Blade 提供了 View::if 方法，它允许你使用闭包快速度定义条件指令。例如，定义一个校验当前应用的自定义指令
 
 ```php
-View::if('app', function (...$apps) {
+use think\blade\facade\Blade;
+Blade::if('app', function (...$apps) {
+    $appName = app('http')->getName();
 
     if (count($apps) > 0) {
-        $patterns = is_array($apps[0]) ? $apps[0] : $apps;
-        return \Illuminate\Support\Str::is($patterns, app('http')->getName());
+        $patterns = is_array($apps[0]) ? $apps[0] : (array) $apps;
+        return in_array($appName, $patterns);
     }
 
-    return app('http')->getName();
+    return $appName;
 });
 ```
 
@@ -73,6 +86,8 @@ View::if('app', function (...$apps) {
     // 后台应用
 @elseapp('api')
     // api应用
+@elseapp(['index', 'common'])
+    // index和common应用
 @else
     // 其他应用
 @endapp
@@ -92,6 +107,8 @@ View::if('app', function (...$apps) {
 ###  中间件 挂载 auth 到 app 案例
 
 ```php
+use think\blade\facade\View;
+
 /**
  * 认证
  */
@@ -118,13 +135,13 @@ class Auth
         $auth = new \app\admin\service\Auth($this->app);
 
         // 容器注入
-        Container::getInstance()->bind('auth', $auth);
+        $this->app->bind('auth', $auth);
         
         // 在线用户信息, 未登录返回guest用户
         $user = $auth->user();
         
         // 模版变量注入
-        View::assign([
+        View::share([
             'auth' => $auth,
             'user' => $user,
         ]);
@@ -134,6 +151,121 @@ class Auth
 }
 ```
 
+###  有条件地编译 class 样式
+
+该`@class`指令有条件地编译 CSS class 样式。该指令接收一个数组，其中数组的键包含你希望添加的一个或多个样式的类名，而值是一个布尔表达式。如果数组元素有一个数值的键，它将始终包含在呈现的 class 列表中：
+```
+// 多行php代码
+@php
+    $isActive = false;
+    $hasError = true;
+@endphp
+
+<span @class([
+    'p-4',
+    'font-bold' => $isActive,
+    'text-gray-500' => !$isActive,
+    'bg-red' => $hasError,
+])></span>
+
+// 结果:
+<span class="p-4 text-gray-500 bg-red"></span>
+```
+
+###  同样，@style 指令可用于有条件地将内联 CSS 样式添加到一个 HTML 元素中。
+```
+// 单行php代码可以简写如下
+@php($isActive = true)
+
+<span @style([
+    'background-color: red',
+    'font-weight: bold' => $isActive,
+])></span>
+
+// 结果:
+<span style="background-color: red; font-weight: bold;"></span>
+```
+### 附加属性
+
+为方便起见，你可以使用该`@checked`指令轻松判断给定的 HTML 复选框输入是否被「选中（checked）」。如果提供的条件判断为`true`，则此指令将回显`checked`：
+```html
+<input type="checkbox" name="active" value="active" @checked(true) />
+```
+
+### `@selected`指令可用于判断给定的选项是否被「选中（selected）」：
+```html
+@php
+$versions = [
+    '1.0',
+    '1.2',
+    '1.3',
+    '1.4',
+    '1.5',
+];
+@endphp
+<select name="version">
+    @foreach ($versions as $version)
+        <option value="{{ $version }}" @selected('1.2' == $version)>
+            {{ $version }}
+        </option>
+    @endforeach
+</select>
+```
+### `@disabled`指令可用于判断给定元素是否为「禁用（disabled）」:
+```html
+<button type="submit" @disabled($errors->isNotEmpty())>Submit</button>
+```
+
+### `@readonly`指令可以用来指示某个元素是否应该是「只读 （readonly）」的。
+```html
+<input type="email" name="email" value="email@laravel.com"  @readonly(1) />
+```
+
+### `@required`指令可以用来指示一个给定的元素是否应该是「必需的（required）」。
+```html
+<input type="text" name="title" value="title" @required(1) />
+```
+### 表单csrf token
+```html
+@csrf
+// 也支持参数, 同thinkphp的Request::buildToken()参数相同
+@csrf($name, $type)
+// 结果:
+<input type="hidden" name="__token__" value="a47f4452e760ae12af62c11fbea5c65e">
+```
+### Method 字段
+由于 HTML 表单不能发出 `PUT`、`PATCH` 或 `DELETE` 请求，因此需要添加一个隐藏的 `__method__` 字段来欺骗这些 HTTP 动词。 `@method` Blade 指令可以为你创建此字段：
+```html
+<form action="/foo/bar" method="POST">
+    @method('PUT', '___method')
+    ...
+</form>
+```
+### 自定义button组件
+```html
+<!-- /app/index/view/default/components/button.html.php -->
+<button type="{{ $type }}" {{ $attributes->whereDoesntStartWith('name') }}>{{ $name }}</button>
+
+// 引用
+<x-button type="submit" name="提交" class="btn btn-submit" />
+```
+
+### 自定义button组件
+```html
+<!-- /app/index/view/default/components/alert.html.php -->
+<div class="alert">
+    <h3 {{ $title->attributes }}>{{ $title ?? '' }}</h3>
+    {{ $slot }}
+</div>
+
+// 引用
+<x-alert type="info" class="mb-4">
+    <x-slot:title class="color-red">
+        Server Error
+    </x-slot>
+    <strong>Whoops!</strong> Something went wrong!
+</x-alert>
+```
 ## 更多用法参考 laravel blade 手册
 
-https://learnku.com/docs/laravel/6.x/blade/5147
+https://learnku.com/docs/laravel/10.x/blade/14852
