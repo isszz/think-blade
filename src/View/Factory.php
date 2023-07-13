@@ -389,7 +389,6 @@ class Factory implements FactoryContract
             return $template;
         }
 
-        // dd($template);
         // 未设置主题, 尝试先去default查找
         if(empty($this->config['theme'])) {
 

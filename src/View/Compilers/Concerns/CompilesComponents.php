@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 use Illuminate\View\ComponentAttributeBag;
 
 use function Illuminate\Support\e;
+use function Illuminate\Support\hash_fit;
 
 trait CompilesComponents
 {
@@ -48,7 +49,7 @@ trait CompilesComponents
      */
     public static function newComponentHash(string $component)
     {
-        static::$componentHashStack[] = $hash = hash('xxh128', $component);
+        static::$componentHashStack[] = $hash = hash_fit($component);
 
         return $hash;
     }

@@ -318,6 +318,34 @@ trait CompilesConditionals
     }
 
     /**
+     * class current
+     *
+     * @param  string  $condition
+     * @return string
+     */
+    protected function compileCurrent($expression)
+    {
+        [$condition, $simple, $class] = str_contains($expression, ',')
+                    ? array_map('trim', explode(',', trim($expression, '()'), 3)) + ['', '', '']
+                    : [trim($expression, '()'), '', ''];
+
+        if ($class) {
+            if (str_contains($class, '\'')) {
+                $class = trim($class, '\'');
+            }
+        } else {
+            $class = 'current';
+        }
+
+        if ($simple !== 'false') {
+            $class = ' class="'. $class .'"';
+        }
+
+        return "<?php if({$condition}): echo '{$class}'; endif; ?>";
+    }
+
+
+    /**
      * Compile the push statements into valid PHP.
      *
      * @param  string  $expression
