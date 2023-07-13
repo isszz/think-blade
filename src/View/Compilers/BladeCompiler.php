@@ -30,8 +30,7 @@ class BladeCompiler extends Compiler implements CompilerInterface
         Concerns\CompilesLoops,
         Concerns\CompilesRawPhp,
         Concerns\CompilesStacks,
-        Concerns\CompilesStyles,
-        Concerns\CompilesTranslations;
+        Concerns\CompilesStyles;
 
     /**
      * All of the registered extensions.

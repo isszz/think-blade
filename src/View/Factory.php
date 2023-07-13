@@ -3,7 +3,6 @@
 namespace Illuminate\View;
 
 use think\Container;
-// use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\View\Factory as FactoryContract;
 use Illuminate\Support\Arr;
@@ -25,8 +24,7 @@ class Factory implements FactoryContract
         Concerns\ManagesFragments,
         Concerns\ManagesLayouts,
         Concerns\ManagesLoops,
-        Concerns\ManagesStacks,
-        Concerns\ManagesTranslations;
+        Concerns\ManagesStacks;
 
     // 模板引擎参数
     protected $config = [
