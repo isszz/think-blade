@@ -1,4 +1,5 @@
 <?php
+
 use think\facade\Request;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 

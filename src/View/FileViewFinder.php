@@ -40,7 +40,7 @@ class FileViewFinder implements ViewFinderInterface
      *
      * @var string[]
      */
-    protected $extensions = ['blade.php', 'html.php', 'php', 'css', 'html'];
+    protected $extensions = ['html.php', 'blade.php', 'php', 'css', 'html'];
 
     /**
      * Create a new file view loader instance.
@@ -125,6 +125,16 @@ class FileViewFinder implements ViewFinderInterface
      */
     protected function findInPaths($name, $paths)
     {
+        if (str_contains($name, '@')) {
+            [$app, $name] = explode('@', $name);
+            $currentApp = app('http')->getName();
+
+            if ($app != $currentApp) {
+                $paths[] = base_path($app) .'view';
+                $this->addLocation(base_path($app) .'view');
+            }
+        }
+
         foreach ((array) $paths as $path) {
             foreach ($this->getPossibleViewFiles($name) as $file) {
                 if ($this->files->exists($viewPath = $path.'/'.$file)) {

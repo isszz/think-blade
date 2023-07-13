@@ -5,12 +5,14 @@ namespace Illuminate\Filesystem;
 use ErrorException;
 use FilesystemIterator;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
+use Illuminate\Support\Traits\Conditionable;
 use Illuminate\Support\Traits\Macroable;
 use Symfony\Component\Finder\Finder;
 use function Illuminate\Support\windows_os;
 
 class Filesystem
 {
+    use Conditionable;
     use Macroable;
 
     /**
@@ -22,6 +24,17 @@ class Filesystem
     public function exists($path)
     {
         return file_exists($path);
+    }
+
+    /**
+     * Determine if a file or directory is missing.
+     *
+     * @param  string  $path
+     * @return bool
+     */
+    public function missing($path)
+    {
+        return ! $this->exists($path);
     }
 
     /**
@@ -75,39 +88,62 @@ class Filesystem
      * Get the returned value of a file.
      *
      * @param  string  $path
+     * @param  array  $data
      * @return mixed
      *
      * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
-    public function getRequire($path)
+    public function getRequire($path, array $data = [])
     {
         if ($this->isFile($path)) {
-            return require $path;
+            $__path = $path;
+            $__data = $data;
+
+            return (static function () use ($__path, $__data) {
+                extract($__data, EXTR_SKIP);
+
+                return require $__path;
+            })();
         }
 
-        throw new FileNotFoundException("File does not exist at path {$path}");
+        throw new FileNotFoundException("File does not exist at path {$path}.");
     }
 
     /**
      * Require the given file once.
      *
-     * @param  string  $file
+     * @param  string  $path
+     * @param  array  $data
      * @return mixed
+     *
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
-    public function requireOnce($file)
+    public function requireOnce($path, array $data = [])
     {
-        require_once $file;
+        if ($this->isFile($path)) {
+            $__path = $path;
+            $__data = $data;
+
+            return (static function () use ($__path, $__data) {
+                extract($__data, EXTR_SKIP);
+
+                return require_once $__path;
+            })();
+        }
+
+        throw new FileNotFoundException("File does not exist at path {$path}.");
     }
 
     /**
-     * Get the MD5 hash of the file at the given path.
+     * Get the hash of the file at the given path.
      *
      * @param  string  $path
+     * @param  string  $algorithm
      * @return string
      */
-    public function hash($path)
+    public function hash($path, $algorithm = 'md5')
     {
-        return md5_file($path);
+        return hash_file($algorithm, $path);
     }
 
     /**
@@ -145,6 +181,19 @@ class Filesystem
         file_put_contents($tempPath, $content);
 
         rename($tempPath, $path);
+    }
+
+    /**
+     * Replace a given string within a given file.
+     *
+     * @param  array|string  $search
+     * @param  array|string  $replace
+     * @param  string  $path
+     * @return void
+     */
+    public function replaceInFile($search, $replace, $path)
+    {
+        file_put_contents($path, str_replace($search, $replace, file_get_contents($path)));
     }
 
     /**
@@ -377,6 +426,20 @@ class Filesystem
     public function isWritable($path)
     {
         return is_writable($path);
+    }
+    
+    /**
+     * Determine if two files are the same by comparing their hashes.
+     *
+     * @param  string  $firstFile
+     * @param  string  $secondFile
+     * @return bool
+     */
+    public function hasSameHash($firstFile, $secondFile)
+    {
+        $hash = @md5_file($firstFile);
+
+        return $hash && $hash === @md5_file($secondFile);
     }
 
     /**

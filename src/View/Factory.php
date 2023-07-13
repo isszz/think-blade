@@ -156,8 +156,8 @@ class Factory implements FactoryContract
             $path .= $this->config['theme'] . DS;
         }
 
+        $this->app->get('view.finder')->addLocation($path);
 
-        // dd($path);
         // $finder->addLocation($path); //  . 'components'. DS
 
         // debug 不缓存
