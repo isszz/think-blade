@@ -4,7 +4,7 @@ thinkphp8 blade view engine
 
 <p>
     <a href="https://packagist.org/packages/isszz/think-blade"><img src="https://img.shields.io/badge/php->=8.0-8892BF.svg" alt="Minimum PHP Version"></a>
-    <a href="https://packagist.org/packages/isszz/think-blade"><img src="https://img.shields.io/badge/thinkphp->=8.0-8892BF.svg" alt="Minimum Thinkphp Version"></a>
+    <a href="https://packagist.org/packages/isszz/think-blade"><img src="https://img.shields.io/badge/thinkphp->=6.x-8892BF.svg" alt="Minimum Thinkphp Version"></a>
     <a href="https://packagist.org/packages/isszz/think-blade"><img src="https://poser.pugx.org/isszz/think-blade/v/stable" alt="Stable Version"></a>
     <a href="https://packagist.org/packages/isszz/think-blade"><img src="https://poser.pugx.org/isszz/think-blade/downloads" alt="Total Downloads"></a>
     <a href="https://packagist.org/packages/isszz/think-blade"><img src="https://poser.pugx.org/isszz/think-blade/license" alt="License"></a>
