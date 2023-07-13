@@ -1,6 +1,6 @@
 <?php
 
-namespace think\view\driver;
+namespace think\blade;
 
 class ViewNotFoundException extends \RuntimeException
 {

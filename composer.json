@@ -15,7 +15,6 @@
         "ext-mbstring": "*",
         "ramsey/uuid": "^4.7",
         "doctrine/inflector": "^2.0",
-        "symfony/debug": "^4.3.4",
         "symfony/finder": "^4.3.4",
         "topthink/framework": "8.*"
     },
@@ -26,7 +25,6 @@
         ],
         "psr-4": {
             "think\\blade\\": "src",
-            "think\\view\\driver\\": "src",
             "Illuminate\\Container\\": "src/Container",
             "Illuminate\\Contracts\\": "src/Contracts",
             "Illuminate\\Support\\": "src/Support",

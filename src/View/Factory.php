@@ -12,7 +12,7 @@ use Illuminate\Support\Traits\Macroable;
 use Illuminate\View\Engines\EngineResolver;
 use InvalidArgumentException;
 
-use think\view\driver\ViewNotFoundException;
+use think\blade\ViewNotFoundException;
 
 use function Illuminate\Support\tap;
 
