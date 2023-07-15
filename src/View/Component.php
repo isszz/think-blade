@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View;
 
@@ -11,6 +12,7 @@ use ReflectionMethod;
 use ReflectionProperty;
 
 use function Illuminate\Support\collect;
+use function Illuminate\Support\hash_fit;
 
 abstract class Component
 {
@@ -202,7 +204,7 @@ abstract class Component
             $directory
         );
 
-        if (! is_file($viewFile = $directory . '/' . hash('xxh128', $contents) . $compiledExtension)) {
+        if (! is_file($viewFile = $directory . '/' . hash_fit($contents) . $compiledExtension)) {
             if (! is_dir($directory)) {
                 mkdir($directory, 0755, true);
             }

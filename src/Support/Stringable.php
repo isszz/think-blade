@@ -5,9 +5,10 @@ namespace Illuminate\Support;
 use ArrayAccess;
 use Closure;
 use Illuminate\Support\Traits\Conditionable;
-
 use JsonSerializable;
 use Stringable as BaseStringable;
+
+use function Illuminate\Support\collect;
 
 class Stringable implements JsonSerializable, ArrayAccess, BaseStringable
 {
@@ -235,27 +236,6 @@ class Stringable implements JsonSerializable, ArrayAccess, BaseStringable
         return new static($callback($this));
     }
 
-    /**
-     * Get the plural form of an English word.
-     *
-     * @param  int|array|\Countable  $count
-     * @return static
-     */
-    public function plural($count = 2)
-    {
-        return new static(Str::plural($this->value, $count));
-    }
-
-    /**
-     * Pluralize the last word of an English, studly caps case string.
-     *
-     * @param  int|array|\Countable  $count
-     * @return static
-     */
-    public function pluralStudly($count = 2)
-    {
-        return new static(Str::pluralStudly($this->value, $count));
-    }
 
     /**
      * Repeat the string.

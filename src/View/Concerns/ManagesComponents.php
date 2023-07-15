@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View\Concerns;
 
@@ -125,7 +126,7 @@ trait ManagesComponents
             $this->componentData[count($this->componentStack)],
             ['slot' => $defaultSlot],
             $this->slots[count($this->componentStack)],
-            ['__laravel_slots' => $slots]
+            ['__thinkphp_slots' => $slots]
         );
     }
 

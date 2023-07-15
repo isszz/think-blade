@@ -3,28 +3,18 @@
 namespace Illuminate\View\Engines;
 
 use Illuminate\Contracts\View\Engine;
-use Illuminate\Filesystem\Filesystem;
+use Illuminate\View\ViewException;
 use Throwable;
 
 class PhpEngine implements Engine
 {
     /**
-     * The filesystem instance.
-     *
-     * @var \Illuminate\Filesystem\Filesystem
-     */
-    protected $files;
-
-    /**
      * Create a new file engine instance.
      *
-     * @param  \Illuminate\Filesystem\Filesystem  $files
      * @return void
      */
-    public function __construct(Filesystem $files)
-    {
-        $this->files = $files;
-    }
+    public function __construct()
+    {}
 
     /**
      * Get the evaluated contents of the view.
@@ -55,7 +45,7 @@ class PhpEngine implements Engine
         // flush out any stray output that might get out before an error occurs or
         // an exception is thrown. This prevents any partial views from leaking.
         try {
-            $this->files->getRequire($path, $data);
+            $this->getRequire($path, $data);
         } catch (Throwable $e) {
             $this->handleViewException($e, $obLevel);
         }
@@ -79,5 +69,30 @@ class PhpEngine implements Engine
         }
 
         throw $e;
+    }
+
+    /**
+     * Get the returned value of a file.
+     *
+     * @param  string  $path
+     * @param  array  $data
+     * @return mixed
+     *
+     * @throws \Illuminate\View\ViewException
+     */
+    public function getRequire($path, array $data = [])
+    {
+        if (is_file($path)) {
+            $__path = $path;
+            $__data = $data;
+
+            return (static function () use ($__path, $__data) {
+                extract($__data, EXTR_SKIP);
+
+                return require $__path;
+            })();
+        }
+
+        throw new ViewException("View file does not exist at path {$path}.");
     }
 }

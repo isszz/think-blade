@@ -1,19 +1,12 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View;
 
-use Illuminate\Filesystem\Filesystem;
 use InvalidArgumentException;
 
-class FileViewFinder implements ViewFinderInterface
+class FileViewFinder
 {
-    /**
-     * The filesystem instance.
-     *
-     * @var \Illuminate\Filesystem\Filesystem
-     */
-    protected $files;
-
     /**
      * The array of active view paths.
      *
@@ -40,19 +33,17 @@ class FileViewFinder implements ViewFinderInterface
      *
      * @var string[]
      */
-    protected $extensions = ['html.php', 'blade.php', 'php', 'css', 'html'];
+    protected $extensions = ['blade.php', 'php', 'css', 'html'];
 
     /**
      * Create a new file view loader instance.
      *
-     * @param  \Illuminate\Filesystem\Filesystem  $files
      * @param  array  $paths
      * @param  array|null  $extensions
      * @return void
      */
-    public function __construct(Filesystem $files, array $paths, array $extensions = null)
+    public function __construct(array $paths, array $extensions = null)
     {
-        $this->files = $files;
         $this->paths = array_map([$this, 'resolvePath'], $paths);
 
         if (isset($extensions)) {
@@ -102,7 +93,7 @@ class FileViewFinder implements ViewFinderInterface
      */
     protected function parseNamespaceSegments($name)
     {
-        $segments = explode(static::HINT_PATH_DELIMITER, $name);
+        $segments = explode(ViewName::HINT_PATH_DELIMITER, $name);
         if (count($segments) !== 2) {
             throw new InvalidArgumentException("View [{$name}] has an invalid name.");
         }
@@ -125,7 +116,7 @@ class FileViewFinder implements ViewFinderInterface
      */
     protected function findInPaths($name, $paths)
     {
-        if (str_contains($name, '@')) {
+        /*if (str_contains($name, '@')) {
             [$app, $name] = explode('@', $name);
             $currentApp = app('http')->getName();
 
@@ -133,11 +124,11 @@ class FileViewFinder implements ViewFinderInterface
                 $paths[] = base_path($app) .'view';
                 $this->addLocation(base_path($app) .'view');
             }
-        }
+        }*/
 
         foreach ((array) $paths as $path) {
             foreach ($this->getPossibleViewFiles($name) as $file) {
-                if ($this->files->exists($viewPath = $path.'/'.$file)) {
+                if (file_exists($viewPath = $path.'/'.$file)) {
                     return $viewPath;
                 }
             }
@@ -261,7 +252,7 @@ class FileViewFinder implements ViewFinderInterface
      */
     public function hasHintInformation($name)
     {
-        return strpos($name, static::HINT_PATH_DELIMITER) > 0;
+        return strpos($name, ViewName::HINT_PATH_DELIMITER) > 0;
     }
 
     /**
@@ -272,16 +263,6 @@ class FileViewFinder implements ViewFinderInterface
     public function flush()
     {
         $this->views = [];
-    }
-
-    /**
-     * Get the filesystem instance.
-     *
-     * @return \Illuminate\Filesystem\Filesystem
-     */
-    public function getFilesystem()
-    {
-        return $this->files;
     }
 
     /**

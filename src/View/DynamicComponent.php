@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View;
 
@@ -75,7 +76,7 @@ EOF;
                     $this->compileProps($bindings),
                     $this->compileBindings($bindings),
                     class_exists($class) ? '{{ $attributes }}' : '',
-                    $this->compileSlots($data['__laravel_slots']),
+                    $this->compileSlots($data['__thinkphp_slots']),
                     '{{ $slot ?? "" }}',
                 ],
                 $template
@@ -162,10 +163,11 @@ EOF;
     protected function compiler()
     {
         if (! static::$compiler) {
+            $blade = Container::getInstance()->make('blade.compiler');
             static::$compiler = new ComponentTagCompiler(
-                Container::getInstance()->make('blade.compiler')->getClassComponentAliases(),
-                Container::getInstance()->make('blade.compiler')->getClassComponentNamespaces(),
-                Container::getInstance()->make('blade.compiler')
+                $blade->getClassComponentAliases(),
+                $blade->getClassComponentNamespaces(),
+                $blade
             );
         }
 

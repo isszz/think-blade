@@ -10,7 +10,6 @@ class View extends Facade
 {
     protected static function getFacadeClass()
     {
-        // return 'blade.compiler';
     	return 'blade.view';
     }
 }

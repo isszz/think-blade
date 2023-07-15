@@ -1,84 +1,64 @@
 <?php
+declare(strict_types=1);
 
-namespace think\blade;
+namespace think\view\driver;
 
 use Illuminate\Contracts\View\View as ViewInterface;
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\View\Compilers\BladeCompiler;
 use Illuminate\View\Engines\CompilerEngine;
 use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Engines\FileEngine;
 use Illuminate\View\Engines\PhpEngine;
 use Illuminate\View\Factory;
-use Illuminate\View\FileViewFinder;
-
-use function Illuminate\Support\tap;
-
-use think\Container;
+// use Illuminate\View\FileViewFinder;
 
 use think\App;
-use think\Config;
-use think\Service;
+
+use function is_dir;
+use function mkdir;
+use function Illuminate\Support\tap;
 
 /**
  * Standalone class for generating text using blade templates.
  */
-class BladeService extends Service
+class BladeInstance
 {
     /**
-     * string The default cache path.
+     * app
      */
-    private $compiled;
+    private $app;
+
+    /**
+     * string The default path for views.
+     */
+    private $path;
 
     /**
      * bool The default Whether to enable cacheing.
      */
     private $isCache;
-    private $compiledExtension = 'php';
-
-    /**
-     * Factory|null The internal cache of the Factory to only instantiate it once.
-     */
-    private $factory;
-
-    /**
-     * BladeCompiler|null The internal cache of the BladeCompiler to only instantiate it once.
-     */
-    private $compiler;
 
     private $files = null;
-    private $config = [];
 
     /**
      * Create a new instance of the blade view factory.
      *
-     * @param App $app
+     * @param string $path The default path for views
      * @param string $cache The default path for cached php
      */
-    public function boot(Config $config)
+    public function __construct(App $app, string $path, string $cachePath, bool $isCache)
     {
-        /*$this->config = $config->get('view');
-
-        if (empty($this->config['compiled'])) {
-            $this->config['compiled'] = $this->app->getRuntimePath(); //  . 'view' . DS
-        }
-
-        $this->compiled = $this->config['compiled'];
-        $this->isCache = $this->config['cache'] ?? false;
-        $this->compiledExtension = $this->config['compiled_extension'] ?? 'php';*/
-
-        $this->compiled = $this->app->getRuntimePath();
-
-        // if(class_exists('\think\app\MultiApp')) {}
-
-        if (is_null($this->files)) {
-            $this->files = new Filesystem;
-        }
+        $this->app = $app;
+        $this->path = $path;
+        $this->cachePath = $cachePath;
+        $this->isCache = $isCache;
 
         $this->registerFactory();
-        $this->registerViewFinder();
+        // $this->registerViewFinder();
         $this->registerBladeCompiler();
         $this->registerEngineResolver();
+
+        return $this;
     }
 
     /**
@@ -91,7 +71,8 @@ class BladeService extends Service
         $this->app->bind('blade.view', function () {
             $factory = $this->createFactory(
                 $this->app->get('view.engine.resolver'),
-                $this->app->get('view.finder')
+                null,
+                // $this->app->get('view.finder')
             );
 
             // We will also set the container instance on this view environment since the
@@ -114,7 +95,7 @@ class BladeService extends Service
      */
     protected function createFactory($resolver, $finder)
     {
-        return new Factory($resolver, $finder, $this->app);
+        return new Factory($this->app, $resolver, $finder);
     }
 
     /**
@@ -125,8 +106,8 @@ class BladeService extends Service
     public function registerViewFinder()
     {
         $this->app->bind('view.finder', function () {
-            return new FileViewFinder($this->files, [
-                $this->compiled,
+            return new FileViewFinder([
+                $this->path,
             ]);
         });
     }
@@ -140,9 +121,8 @@ class BladeService extends Service
     {
         $this->app->bind('blade.compiler', function () {
             return tap(new BladeCompiler(
-                $this->files,
-                // $this->compiled,
-                // $this->isCache,
+                $this->cachePath,
+                $this->isCache,
                 // $this->compiledExtension,
             ), function ($blade) {
                 $blade->component('dynamic-component', \Illuminate\View\DynamicComponent::class);
@@ -180,7 +160,7 @@ class BladeService extends Service
     public function registerFileEngine($resolver)
     {
         $resolver->register('file', function () {
-            return new FileEngine($this->files);
+            return new FileEngine();
         });
     }
 
@@ -193,7 +173,7 @@ class BladeService extends Service
     public function registerPhpEngine($resolver)
     {
         $resolver->register('php', function () {
-            return new PhpEngine($this->files);
+            return new PhpEngine();
         });
     }
 
@@ -208,11 +188,26 @@ class BladeService extends Service
         $resolver->register('blade', function () {
             $compiler = new CompilerEngine($this->app->get('blade.compiler'));
 
-            Container::getInstance()->resolving(function() use ($compiler) {
+            $this->app->resolving(function() use ($compiler) {
                 $compiler->forgetCompiledOrNotExpired();
             });
 
             return $compiler;
         });
+    }
+
+    /**
+     * Get the laravel view factory.
+     *
+     * @return Factory
+     */
+    public function getViewFactory(): Factory
+    {
+        return $this->app->get('blade.view');
+    }
+
+    public function __call($method, $params)
+    {
+        return call_user_func_array([$this->app->get('blade.compiler'), $method], $params);
     }
 }

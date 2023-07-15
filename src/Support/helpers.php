@@ -1,10 +1,22 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\Support;
 
 use Closure;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HigherOrderTapProxy;
+
+/**
+ * Create a collection from the given value.
+ *
+ * @param  mixed  $value
+ * @return Collection
+ */
+function collect($value = null)
+{
+    return new Collection($value);
+}
 
 if (! function_exists('blank')) {
     /**
@@ -96,7 +108,7 @@ if (! function_exists('last')) {
     }
 }
 
-// if (! function_exists('e')) {
+if (! function_exists('e')) {
     /**
      * Encode HTML special characters in a string.
      *
@@ -110,11 +122,15 @@ if (! function_exists('last')) {
             return $value->toHtml();
         }
 
+        if (!is_string($value)) {
+            $value = (string) $value;
+        }
+
         return htmlspecialchars($value ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', $doubleEncode);
     }
-// }
+}
 
-if (! function_exists('e')) {
+if (! function_exists('value')) {
     /**
      * Return the default value of the given value.
      *
@@ -174,18 +190,6 @@ if (! function_exists('data_get')) {
     }
 }
 
-// if (! function_exists('collect')) {
-/**
-     * Create a collection from the given value.
-     *
-     * @param  mixed  $value
-     * @return Collection
-     */
-    function collect($value = null)
-    {
-        return new Collection($value);
-    }
-// }
 
 if (! function_exists('windows_os')) {
     /**
@@ -225,5 +229,16 @@ if (! function_exists('hash_fit')) {
         }
 
         return hash('xxh128', $data, $binary, $options);
+    }
+}
+
+if (!function_exists('uuid')) {
+    function uuid()
+    {
+        $chars = md5(uniqid((string) mt_rand(), true));
+        $uuid = substr($chars, 0, 8) . '-' . substr($chars, 8, 4) . '-' . substr($chars, 12, 4) . '-'
+            . substr($chars, 16, 4) . '-'
+            . substr($chars, 20, 12);
+        return $uuid;
     }
 }

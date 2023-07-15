@@ -1,12 +1,10 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View\Compilers;
 
 use think\Container;
-// use Illuminate\Container\Container;
-// use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory;
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use Illuminate\View\AnonymousComponent;
 use Illuminate\View\DynamicComponent;
@@ -15,6 +13,7 @@ use Illuminate\View\ViewName;
 use InvalidArgumentException;
 use ReflectionClass;
 use function Illuminate\Support\collect;
+
 /**
  * @author Spatie bvba <info@spatie.be>
  * @author Taylor Otwell <taylor@laravel.com>
@@ -61,8 +60,7 @@ class ComponentTagCompiler
     {
         $this->aliases = $aliases;
         $this->namespaces = $namespaces;
-
-        $this->blade = $blade ?: new BladeCompiler(new Filesystem, sys_get_temp_dir());
+        $this->blade = $blade ?: new BladeCompiler(sys_get_temp_dir());
     }
 
     /**
@@ -264,8 +262,6 @@ class ComponentTagCompiler
     {
         $viewFactory = Container::getInstance()->make('blade.view');
 
-        // dd($this->aliases, $component);
-
         if (isset($this->aliases[$component])) {
             if (class_exists($alias = $this->aliases[$component])) {
                 return $alias;
@@ -414,10 +410,7 @@ class ComponentTagCompiler
      */
     public function guessClassName(string $component)
     {
-        /*$namespace = Container::getInstance()
-                    ->make(Application::class)
-                    ->getNamespace();*/
-        $namespace = 'index\\';
+        $namespace = Container::getInstance()->getNamespace() ?: 'app\\';
 
         $class = $this->formatClassName($component);
 
@@ -452,7 +445,7 @@ class ComponentTagCompiler
             $prefix .= '.';
         }
 
-        $delimiter = \Illuminate\View\ViewFinderInterface::HINT_PATH_DELIMITER;
+        $delimiter = ViewName::HINT_PATH_DELIMITER;
 
         if (str_contains($name, $delimiter)) {
             return Str::replaceFirst($delimiter, $delimiter.$prefix, $name);

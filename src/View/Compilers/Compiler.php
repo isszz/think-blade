@@ -1,10 +1,11 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View\Compilers;
 
-use Illuminate\Filesystem\Filesystem;
-use InvalidArgumentException;
+use Illuminate\View\ViewException;
 
+use InvalidArgumentException;
 use function Illuminate\Support\hash_fit;
 
 abstract class Compiler
@@ -40,40 +41,16 @@ abstract class Compiler
     /**
      * Create a new compiler instance.
      *
-     * @param  \Illuminate\Filesystem\Filesystem  $files
      * @param  string  $cachePath
      * @return void
      *
      * @throws \InvalidArgumentException
      */
-    public function __construct(Filesystem $files/*, $cachePath, $isCache = true, $compiledExtension = 'php'*/)
+    public function __construct($cachePath, $shouldCache = true, $compiledExtension = 'php')
     {
-        $this->files = $files;
-
-        $config = app('config')->get('view');
-
-        /*
-        if (! $cachePath) {
-            throw new InvalidArgumentException('Please provide a valid cache path.');
-        }*/
-
-        if (empty($config['compiled'])) {
-            $config['compiled'] = app()->getRuntimePath(); //  . 'view' . DS
-        }
-
-        $this->cachePath = $config['compiled'];
-        $this->isCache = $config['cache'] ?? false;
-        $this->compiledExtension = $config['compiled_extension'] ?? 'php';
-
-        $theme = $config['theme'] ?? '';
-
-        // 设置到view文件夹
-        $this->cachePath = $this->cachePath .'view'. DS;
-
-        // 如果有主题, 则增加主题文件夹
-        if ($theme) {
-            $this->cachePath = $this->cachePath . $theme . DS;
-        }
+        $this->cachePath = $cachePath;
+        $this->isCache = $shouldCache;
+        $this->compiledExtension = $compiledExtension;
     }
 
     /**
@@ -84,7 +61,6 @@ abstract class Compiler
      */
     public function getCompiledPath($path)
     {
-        // preg_match("/;app;([a-zA-Z]+);view;([a-zA-Z]+);/", str_replace('\\', ';', $path), $appendPaths);
         // return $this->cachePath . '/' . sha1($path) . '.' . basename($path) .'.'. $this->compiledExtension;
         return $this->cachePath .'/'. hash_fit('v2'. basename($path)) .'.'. $this->compiledExtension;
     }
@@ -102,7 +78,7 @@ abstract class Compiler
         // If the compiled file doesn't exist we will indicate that the view is expired
         // so that it can be re-compiled. Else, we will verify the last modification
         // of the views is less than the modification times of the compiled views.
-        if (! $this->files->exists($compiled)) {
+        if (! file_exists($compiled)) {
             return true;
         }
 
@@ -110,8 +86,7 @@ abstract class Compiler
             return true;
         }
 
-        return $this->files->lastModified($path) >=
-               $this->files->lastModified($compiled);
+        return filemtime($path) >= filemtime($compiled);
     }
 
     /**
@@ -122,8 +97,65 @@ abstract class Compiler
      */
     protected function ensureCompiledDirectoryExists($path)
     {
-        if (! $this->files->exists(dirname($path))) {
-            $this->files->makeDirectory(dirname($path), 0777, true, true);
+        if (! file_exists(dirname($path))) {
+            @mkdir(dirname($path), 0777, true);
         }
+    }
+
+    /**
+     * Write the contents of a file.
+     *
+     * @param  string  $path
+     * @param  string  $contents
+     * @param  bool  $lock
+     * @return int|bool
+     */
+    public function putViewContent($path, $contents, $lock = false)
+    {
+        return file_put_contents($path, $contents, $lock ? LOCK_EX : 0);
+    }
+
+    /**
+     * Get the contents of a file.
+     *
+     * @param  string  $path
+     * @return string
+     */
+    public function getViewContent($path, $lock = false)
+    {
+        if (is_file($path)) {
+            return $lock ? $this->sharedGet($path) : file_get_contents($path);
+        }
+
+        throw new ViewException("View file does not exist at path {$path}");
+    }
+
+    /**
+     * Get contents of a file with shared access.
+     *
+     * @param  string  $path
+     * @return string
+     */
+    public function sharedGet($path)
+    {
+        $contents = '';
+
+        $handle = fopen($path, 'rb');
+
+        if ($handle) {
+            try {
+                if (flock($handle, LOCK_SH)) {
+                    clearstatcache(true, $path);
+
+                    $contents = fread($handle, $this->size($path) ?: 1);
+
+                    flock($handle, LOCK_UN);
+                }
+            } finally {
+                fclose($handle);
+            }
+        }
+
+        return $contents;
     }
 }

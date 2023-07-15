@@ -1,9 +1,16 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View\Compilers\Concerns;
 
 use Closure;
 use Illuminate\Support\Str;
+use ReflectionFunction;
+use ReflectionNamedType;
+use RuntimeException;
+
+
+use function Illuminate\Support\collect;
 
 trait CompilesEchos
 {
@@ -72,7 +79,9 @@ trait CompilesEchos
         $callback = function ($matches) {
             $whitespace = empty($matches[3]) ? '' : $matches[3].$matches[3];
 
-            return $matches[1] ? substr($matches[0], 1) : "<?php echo {$this->compileEchoDefaults($matches[2])}; ?>{$whitespace}";
+            return $matches[1]
+                ? substr($matches[0], 1)
+                : "<?php echo {$this->wrapInEchoHandler($matches[2])}; ?>{$whitespace}";
         };
 
         return preg_replace_callback($pattern, $callback, $value);
@@ -91,8 +100,7 @@ trait CompilesEchos
         $callback = function ($matches) {
             $whitespace = empty($matches[3]) ? '' : $matches[3].$matches[3];
 
-            // $wrapped = sprintf($this->echoFormat, $matches[2]);
-            $wrapped = sprintf($this->echoFormat, $this->compileEchoDefaults($matches[2]));
+            $wrapped = sprintf($this->echoFormat, $this->wrapInEchoHandler($matches[2]));
 
             return $matches[1] ? substr($matches[0], 1) : "<?php echo {$wrapped}; ?>{$whitespace}";
         };
@@ -115,20 +123,10 @@ trait CompilesEchos
 
             return $matches[1]
                 ? $matches[0]
-                : "<?php echo e({$this->compileEchoDefaults($matches[2])}); ?>{$whitespace}";
+                : "<?php echo e({$this->wrapInEchoHandler($matches[2])}); ?>{$whitespace}";
         };
 
         return preg_replace_callback($pattern, $callback, $value);
-    }
-
-    /**
-     * Compile the default values for the echo statement.
-     *
-     * @param  string  $value
-     * @return string
-     */
-    public function compileEchoDefaults($value) {
-        return preg_replace('/^(?=\$)(.+?)(?:\s+and\s+)(.+?)$/s', 'empty($1) ? $2 : $1', $value);
     }
 
     /**
@@ -158,7 +156,7 @@ trait CompilesEchos
 
         return empty($this->echoHandlers) ? $value : '$__bladeCompiler->applyEchoHandler('.$value.')';
     }
-
+    
     /**
      * Apply the echo handler for the value if it exists.
      *
@@ -172,5 +170,101 @@ trait CompilesEchos
         }
 
         return $value;
+    }
+
+    /**
+     * Compile the default values for the echo statement.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public function compileEchoDefaults($value) {
+        return preg_replace('/^(?=\$)(.+?)(?:\s+and\s+)(.+?)$/s', 'empty($1) ? $2 : $1', $value);
+    }
+
+    /**
+     * Get the class name of the first parameter of the given Closure.
+     *
+     * @param  \Closure  $closure
+     * @return string
+     *
+     * @throws \ReflectionException
+     * @throws \RuntimeException
+     */
+    protected function firstClosureParameterType(Closure $closure)
+    {
+        $types = array_values($this->closureParameterTypes($closure));
+
+        if (! $types) {
+            throw new RuntimeException('The given Closure has no parameters.');
+        }
+
+        if ($types[0] === null) {
+            throw new RuntimeException('The first parameter of the given Closure is missing a type hint.');
+        }
+
+        return $types[0];
+    }
+
+    /**
+     * Get the class names / types of the parameters of the given Closure.
+     *
+     * @param  \Closure  $closure
+     * @return array
+     *
+     * @throws \ReflectionException
+     */
+    protected function closureParameterTypes(Closure $closure)
+    {
+        $reflection = new ReflectionFunction($closure);
+
+        return collect($reflection->getParameters())->mapWithKeys(function ($parameter) {
+            if ($parameter->isVariadic()) {
+                return [$parameter->getName() => null];
+            }
+
+            return [$parameter->getName() => self::getParameterClassName($parameter)];
+        })->all();
+    }
+
+    /**
+     * Get the class name of the given parameter's type, if possible.
+     *
+     * @param  \ReflectionParameter  $parameter
+     * @return string|null
+     */
+    public static function getParameterClassName($parameter)
+    {
+        $type = $parameter->getType();
+
+        if (! $type instanceof ReflectionNamedType || $type->isBuiltin()) {
+            return;
+        }
+
+        return static::getTypeName($parameter, $type);
+    }
+
+    /**
+     * Get the given type's class name.
+     *
+     * @param  \ReflectionParameter  $parameter
+     * @param  \ReflectionNamedType  $type
+     * @return string
+     */
+    protected static function getTypeName($parameter, $type)
+    {
+        $name = $type->getName();
+
+        if (! is_null($class = $parameter->getDeclaringClass())) {
+            if ($name === 'self') {
+                return $class->getName();
+            }
+
+            if ($name === 'parent' && $parent = $class->getParentClass()) {
+                return $parent->getName();
+            }
+        }
+
+        return $name;
     }
 }

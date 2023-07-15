@@ -1,8 +1,9 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View\Compilers\Concerns;
 
-use Illuminate\Support\Str;
+use function Illuminate\Support\uuid;
 
 trait CompilesStacks
 {
@@ -40,7 +41,7 @@ trait CompilesStacks
 
         [$stack, $id] = [$parts[0], $parts[1] ?? ''];
 
-        $id = trim($id) ?: "'".(string) Str::uuid()."'";
+        $id = trim($id) ?: "'".(string) uuid()."'";
 
         return '<?php if (! $__env->hasRenderedOnce('.$id.')): $__env->markAsRenderedOnce('.$id.');
 $__env->startPush('.$stack.'); ?>';
@@ -89,7 +90,7 @@ $__env->startPush('.$stack.'); ?>';
 
         [$stack, $id] = [$parts[0], $parts[1] ?? ''];
 
-        $id = trim($id) ?: "'".(string) Str::uuid()."'";
+        $id = trim($id) ?: "'".(string) uuid()."'";
 
         return '<?php if (! $__env->hasRenderedOnce('.$id.')): $__env->markAsRenderedOnce('.$id.');
 $__env->startPrepend('.$stack.'); ?>';

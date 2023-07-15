@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View\Compilers;
 
@@ -9,6 +10,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\View\Component;
 use InvalidArgumentException;
+
 use function Illuminate\Support\collect;
 
 class BladeCompiler extends Compiler implements CompilerInterface
@@ -19,13 +21,11 @@ class BladeCompiler extends Compiler implements CompilerInterface
         Concerns\CompilesComponents,
         Concerns\CompilesConditionals,
         Concerns\CompilesEchos,
-        Concerns\CompilesErrors,
         Concerns\CompilesFragments,
         Concerns\CompilesHelpers,
         Concerns\CompilesIncludes,
         Concerns\CompilesInjections,
         Concerns\CompilesJson,
-        Concerns\CompilesJs,
         Concerns\CompilesLayouts,
         Concerns\CompilesLoops,
         Concerns\CompilesRawPhp,
@@ -169,7 +169,7 @@ class BladeCompiler extends Compiler implements CompilerInterface
         }
 
         if (! is_null($this->cachePath)) {
-            $contents = $this->compileString($this->files->get($this->getPath()));
+            $contents = $this->compileString($this->getViewContent($this->getPath()));
 
             if (! empty($this->getPath())) {
                 $contents = $this->appendFilePath($contents);
@@ -179,7 +179,7 @@ class BladeCompiler extends Compiler implements CompilerInterface
                 $compiledPath = $this->getCompiledPath($this->getPath())
             );
 
-            $this->files->put($compiledPath, $contents);
+            $this->putViewContent($compiledPath, $contents);
         }
     }
 
@@ -443,6 +443,10 @@ class BladeCompiler extends Compiler implements CompilerInterface
      */
     protected function getRawPlaceholder($replace)
     {
+        if (is_numeric($replace)) {
+            $replace = (string) $replace;
+        }
+
         return str_replace('#', $replace, '@__raw_block_#__@');
     }
 

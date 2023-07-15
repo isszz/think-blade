@@ -1,9 +1,17 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View;
 
 class ViewName
 {
+    /**
+     * Hint path delimiter value.
+     *
+     * @var string
+     */
+    const HINT_PATH_DELIMITER = '@';
+
     /**
      * Normalize the given view name.
      *
@@ -12,7 +20,7 @@ class ViewName
      */
     public static function normalize($name, $raw = false)
     {
-        $delimiter = ViewFinderInterface::HINT_PATH_DELIMITER;
+        $delimiter = self::HINT_PATH_DELIMITER;
 
         if (! str_contains($name, $delimiter)) {
             return str_replace('/', '.', $name);
@@ -20,18 +28,22 @@ class ViewName
 
         [$namespace, $name] = explode($delimiter, $name);
 
-        return $namespace.$delimiter.str_replace('/', '.', $name);
+        // $app = app('http')->getName();
+        // if ($namespace != $app) {}
+
+        return $namespace . $delimiter . str_replace('/', '.', $name);
     }
 
     /**
      * Normalize the given template.
      *
      * @param  string  $name
+     * @param  bool  $raw
      * @return string
      */
-    public static function normalize2($template = '', $isRaw = false)
+    public static function normalize2tp($template = '', $raw = false)
     {
-        if($isRaw && strpos($template, '/')) {
+        if($raw && strpos($template, '/')) {
             return str_replace('/', '.', $template);
         }
 

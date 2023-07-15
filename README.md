@@ -4,6 +4,7 @@ thinkphp8 blade view engine
 
 <p>
     <a href="https://packagist.org/packages/isszz/think-blade"><img src="https://img.shields.io/badge/php->=8.0-8892BF.svg" alt="Minimum PHP Version"></a>
+    <a href="https://packagist.org/packages/isszz/think-blade"><img src="https://img.shields.io/badge/thinkphp->=6.x-8892BF.svg" alt="Minimum Thinkphp Version"></a>
     <a href="https://packagist.org/packages/isszz/think-blade"><img src="https://poser.pugx.org/isszz/think-blade/v/stable" alt="Stable Version"></a>
     <a href="https://packagist.org/packages/isszz/think-blade"><img src="https://poser.pugx.org/isszz/think-blade/downloads" alt="Total Downloads"></a>
     <a href="https://packagist.org/packages/isszz/think-blade"><img src="https://poser.pugx.org/isszz/think-blade/license" alt="License"></a>
@@ -23,20 +24,24 @@ composer require isszz/think-blade
 // view.php 模板配置, 多应用时, 每个应用的配置可以不同
 
 return [
-    // 视图目录名
-    'dir_name' => 'view',
+    // 模板引擎类型使用Blade
+    'type' => 'Blade',
     // 模版主题
     'theme' => '',
-    // 模板起始路径
-    'base_path' => '',
-    // 模板文件后缀
-    'suffix' => 'blade.php',
-    // 模板文件名分隔符
-    'depr' => DIRECTORY_SEPARATOR,
     // 缓存路径
-    'compiled' => '', // 默认留空使用runtime目录
-    // 是否开启模板编译缓存, 设为false则每次都会重新编译
-    'cache' => true,
+    'compiled' => '',
+    // 默认模板渲染规则 1 解析为小写+下划线 2 全部转换小写 3 保持操作方法
+    'auto_rule' => 1,
+    // 视图目录名
+    'view_dir_name' => 'view',
+    // 模板起始路径
+    'view_path' => '',
+    // 模板后缀
+    'view_suffix' => 'html.php',
+    // 模板文件名分隔符
+    'view_depr' => DIRECTORY_SEPARATOR,
+    // 是否开启模板编译缓存,设为false则每次都会重新编译
+    'tpl_cache' => true,
 ];
 ```
 
@@ -55,9 +60,9 @@ return [
 Blade 允许你使用 directive 方法自定义指令。当 Blade 编译器遇到自定义指令时，这会调用该指令包含的表达式提供的回调。
 
 ```php
-use think\blade\facade\Blade;
+use think\facade\View;
 
-Blade::directive('time2str', function($expression) {
+View::directive('time2str', function($expression) {
   return "<?php echo \Helper::time2str($expression); ?>";
 });
 ```
@@ -73,9 +78,9 @@ Blade::directive('time2str', function($expression) {
 在定义简单的、自定义条件语句时，编写自定义指令比必须的步骤复杂。在这种情况下，think Blade 提供了 View::if 方法，它允许你使用闭包快速度定义条件指令。例如，定义一个校验当前应用的自定义指令
 
 ```php
-use think\blade\facade\Blade;
+use think\facade\View;
 
-Blade::if('app', function (...$apps) {
+View::if('app', function (...$apps) {
     $appName = app('http')->getName();
 
     if (count($apps) > 0) {
@@ -115,7 +120,7 @@ Blade::if('app', function (...$apps) {
 ###  中间件 挂载 auth 到 app 案例
 
 ```php
-use think\blade\facade\View;
+use think\facade\View;
 
 /**
  * 认证
@@ -162,7 +167,7 @@ class Auth
 ###  有条件地编译 class 样式
 
 该`@class`指令有条件地编译 CSS class 样式。该指令接收一个数组，其中数组的键包含你希望添加的一个或多个样式的类名，而值是一个布尔表达式。如果数组元素有一个数值的键，它将始终包含在呈现的 class 列表中：
-```
+```html
 // 多行php代码
 @php
     $isActive = false;
@@ -181,7 +186,7 @@ class Auth
 ```
 
 ###  同样，@style 指令可用于有条件地将内联 CSS 样式添加到一个 HTML 元素中。
-```
+```html
 // 单行php代码可以简写如下
 @php($isActive = true)
 

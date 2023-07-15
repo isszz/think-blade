@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\Support\Traits;
 
@@ -19,9 +20,8 @@ trait Macroable
     /**
      * Register a custom macro.
      *
-     * @param  string $name
+     * @param  string  $name
      * @param  object|callable  $macro
-     *
      * @return void
      */
     public static function macro($name, $macro)
@@ -64,6 +64,16 @@ trait Macroable
     }
 
     /**
+     * Flush the existing macros.
+     *
+     * @return void
+     */
+    public static function flushMacros()
+    {
+        static::$macros = [];
+    }
+
+    /**
      * Dynamically handle calls to the class.
      *
      * @param  string  $method
@@ -80,11 +90,13 @@ trait Macroable
             ));
         }
 
-        if (static::$macros[$method] instanceof Closure) {
-            return call_user_func_array(Closure::bind(static::$macros[$method], null, static::class), $parameters);
+        $macro = static::$macros[$method];
+
+        if ($macro instanceof Closure) {
+            $macro = $macro->bindTo(null, static::class);
         }
 
-        return call_user_func_array(static::$macros[$method], $parameters);
+        return $macro(...$parameters);
     }
 
     /**
@@ -107,9 +119,9 @@ trait Macroable
         $macro = static::$macros[$method];
 
         if ($macro instanceof Closure) {
-            return call_user_func_array($macro->bindTo($this, static::class), $parameters);
+            $macro = $macro->bindTo($this, static::class);
         }
 
-        return call_user_func_array($macro, $parameters);
+        return $macro(...$parameters);
     }
 }

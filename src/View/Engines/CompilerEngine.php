@@ -5,7 +5,6 @@ namespace Illuminate\View\Engines;
 use ErrorException;
 use Exception;
 use Throwable;
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\View\Compilers\CompilerInterface;
 use Illuminate\View\ViewException;
@@ -13,7 +12,6 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 use function Illuminate\Support\last;
 use function Illuminate\Support\str;
-
 
 class CompilerEngine extends PhpEngine
 {
@@ -42,12 +40,11 @@ class CompilerEngine extends PhpEngine
      * Create a new compiler engine instance.
      *
      * @param  \Illuminate\View\Compilers\CompilerInterface  $compiler
-     * @param  \Illuminate\Filesystem\Filesystem|null  $files
      * @return void
      */
-    public function __construct(CompilerInterface $compiler, Filesystem $files = null)
+    public function __construct(CompilerInterface $compiler)
     {
-        parent::__construct($files ?: new Filesystem);
+        parent::__construct();
 
         $this->compiler = $compiler;
     }

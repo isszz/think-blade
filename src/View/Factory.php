@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View;
 
@@ -9,6 +10,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Macroable;
 use Illuminate\View\Engines\EngineResolver;
+use Illuminate\View\FileViewFinder;
 use InvalidArgumentException;
 
 use think\blade\ViewNotFoundException;
@@ -28,20 +30,22 @@ class Factory implements FactoryContract
 
     // 模板引擎参数
     protected $config = [
-        // 视图目录名
-        'dir_name' => 'view',
         // 模版主题
         'theme' => '',
-        // 模板起始路径
-        'base_path' => '',
-        // 模板文件后缀
-        'suffix' => 'blade.php',
-        // 模板文件名分隔符
-        'depr' => DS,
         // 缓存路径
         'compiled' => '',
+        // 默认模板渲染规则 1 解析为小写+下划线 2 全部转换小写 3 保持操作方法
+        'auto_rule' => 1,
+        // 视图目录名
+        'view_dir_name' => 'view',
+        // 模板起始路径
+        'view_path' => '',
+        // 模板后缀
+        'view_suffix' => 'html.php',
+        // 模板文件名分隔符
+        'view_depr' => DS,
         // 是否开启模板编译缓存,设为false则每次都会重新编译
-        'cache' => true,
+        'tpl_cache' => true,
     ];
 
     /**
@@ -78,7 +82,6 @@ class Factory implements FactoryContract
      * @var array
      */
     protected $extensions = [
-        'html.php' => 'blade',
         'blade.php' => 'blade',
         'php' => 'php',
         'css' => 'file',
@@ -111,76 +114,19 @@ class Factory implements FactoryContract
     /**
      * Create a new view factory instance.
      *
+     * @param  \think\App  $app
      * @param  \Illuminate\View\Engines\EngineResolver  $engines
      * @param  \Illuminate\View\ViewFinderInterface  $finder
      * @return void
      */
-    public function __construct(EngineResolver $engines, $finder, App $app)
+    public function __construct(App $app, EngineResolver $engines/*, FileViewFinder $finder*/)
     {
         $this->app = $app;
-        $this->finder = $finder;
+        // $this->finder = $finder;
         $this->engines = $engines;
-
-        $config = $this->app->get('config')->get('view');
-
-        $this->config = array_merge($this->config, $config);
-
-        if (empty($this->config['compiled'])) {
-            $this->config['compiled'] = $app->getRuntimePath();
-        }
-
-        // 缓存主题路径
-        if (!empty($this->config['theme'])) {
-            $this->config['compiled'] .= $this->config['theme'] . DS;
-        }
-
-        // default view path
-        $cutrrentApp = $this->app->http->getName();
-
-        if ($this->config['base_path']) {
-            $path = $this->config['base_path'];
-        } else {
-            $appName = $cutrrentApp;
-            $view = $this->config['dir_name'];
-
-            if (is_dir($this->app->getAppPath() . $view)) {
-                $path = $this->app->getAppPath() . $view . DS;
-            } else {
-                $path = $this->app->getRootPath() . $view . DS . ($appName ? $appName . DS : '');
-            }
-        }
-
-        // 设置主题路径
-        if (!empty($this->config['theme'])) {
-            // default 主题备用
-            $path .= $this->config['theme'] . DS;
-        }
-
-        $this->app->get('view.finder')->addLocation($path);
-
-        // $finder->addLocation($path); //  . 'components'. DS
-
-        // debug 不缓存
-        if ($this->app->isDebug()) {
-            // $this->config['cache'] = false;
-        }
+        $this->config = array_merge($this->config, $this->app->get('config')->get('view', []));
 
         $this->share('__env', $this);
-    }
-
-    /**
-     * 设置模板主题
-     *
-     * @param  string $path 模板文件路径
-     * @return bool
-     */
-    public function theme($path = '')
-    {
-        if (empty($this->config['theme'])) {
-            return $path;
-        }
-
-        return $path .= $this->config['theme'] . DS;
     }
 
     /**
@@ -193,7 +139,7 @@ class Factory implements FactoryContract
     {
         $templatePath = '';
 
-        $template = $this->viewName($template);
+        $template = ViewName::normalize2tp($template);
 
         if ('' == pathinfo($template, PATHINFO_EXTENSION)) {
             $templatePath = $this->parseTemplate($template);
@@ -201,7 +147,7 @@ class Factory implements FactoryContract
 
         // 模板不存在 抛出异常
         if (!$templatePath || !is_file($templatePath)) {
-            throw new ViewNotFoundException('View not exists:' . $this->viewName($template, true), $templatePath);
+            throw new ViewNotFoundException('View not exists:' . ViewName::normalize2tp($template, true), $templatePath);
         }
 
         return $templatePath;
@@ -216,7 +162,7 @@ class Factory implements FactoryContract
      */
     public function exists(string $view): bool
     {
-        $view = $this->viewName($view);
+        $view = ViewName::normalize2tp($view);
 
         if ('' == pathinfo($view, PATHINFO_EXTENSION)) {
             $view = $this->parseTemplate($view);
@@ -235,28 +181,29 @@ class Factory implements FactoryContract
      */
     public function make($view, $data = [], $mergeData = [])
     {
+        $path = null;
         if (is_file($view)) {
             $path = $view;
         } else {
-            $path = '';
-            // $view = ViewName::normalize2($view);
+            $_view = ViewName::normalize2tp($view);
 
-            $view = $this->viewName($view);
 
-            if ('' == pathinfo($view, PATHINFO_EXTENSION)) {
-                $path = $this->parseTemplate($view);
+            // thinkphp方式查找模版
+            if ('' == pathinfo($_view, PATHINFO_EXTENSION)) {
+                $path = $this->parseTemplate($_view);
             }
 
-            if (!$path || !is_file($path)) {
+            // blade方式查找模版
+            /*if (!is_file($path)) {
                 $path = $this->finder->find(
                     $this->normalizeName($view)
                 );
-            }
+            }*/
         }
 
         // 模板不存在 抛出异常
-        if (!$path || !is_file($path)) {
-            throw new ViewNotFoundException('View not exists:' . $this->viewName($view, true), $path);
+        if (!is_file($path)) {
+            throw new ViewNotFoundException('View not exists:' . ViewName::normalize2tp($view, true), $path);
         }
 
         // 记录视图信息
@@ -268,7 +215,7 @@ class Factory implements FactoryContract
         // the caller for rendering or performing other view manipulations on this.
         $data = array_merge($mergeData, $this->parseData($data));
 
-        return tap($this->viewInstance($path, $path, $data), function ($view) {
+        return tap($this->viewInstance($view, $path, $data), function ($view) {
             $this->callCreator($view);
         });
     }
@@ -307,38 +254,43 @@ class Factory implements FactoryContract
      * 获取模版所在基础路径
      *
      * @param string $template 模板文件规则
-     * @return string
+     * @return array
      */
-    private function parseBasePath(string $template): string
+    private function parseBasePath(string $template): array
     {
+        $request = $this->app->request;
+
+        $app = null;
+        $depr = $this->config['view_depr'];
+        $view = $this->config['view_dir_name'] ?: 'view';
+
         // 获取视图根目录
         if (strpos($template, '@')) {
             // 跨应用调用
             [$app, $template] = explode('@', $template);
         }
 
-        $cutrrentApp = $this->app->http->getName();
+        // 多应用模式
+        if(class_exists('\think\app\MultiApp')) {
 
-        if ($this->config['base_path'] && !isset($app)) {
-            $path = $this->config['base_path'];
-        } else {
-            $appName = isset($app) ? $app : $cutrrentApp;
-            $view = $this->config['dir_name'];
+            $appName = is_null($app) ? $this->app->http->getName() : $app;
 
             if (is_dir($this->app->getAppPath() . $view)) {
-                $path = isset($app) ? $this->app->getBasePath() . ($appName ? $appName . DS : '') . $view . DS : $this->app->getAppPath() . $view . DS;
+                $path = (is_null($app) ? $this->app->getAppPath() : $this->app->getBasePath() . $appName) . $depr . $view . $depr;
             } else {
-                $path = $this->app->getRootPath() . $view . DS . ($appName ? $appName . DS : '');
+                $path = $this->app->getRootPath() . $view . $depr . $appName . $depr;
             }
+        } else {
+            // 单应用模式 
+            $path = $this->app->getRootPath() . $view . $depr;
         }
 
         // 设置主题路径
         if (!empty($this->config['theme'])) {
-            // default 主题备用
-            $path .= $this->config['theme'] . DS;
+            $path .= $this->config['theme'] . $depr;
         }
 
-        return $path;
+        return [$path, $template];
     }
 
     /**
@@ -349,9 +301,10 @@ class Factory implements FactoryContract
      */
     private function parseTemplate(string $template): string
     {
-        $depr = $this->config['depr'];
         $request = $this->app->request;
-        $path = $this->parseBasePath($template);
+        $depr = $this->config['view_depr'];
+
+        [$path, $template] = $this->parseBasePath($template);
 
         if (0 !== strpos($template, '/')) {
             $template   = str_replace(['/', ':'], $depr, $template);
@@ -374,16 +327,16 @@ class Factory implements FactoryContract
                         $template = Str::snake($request->action());
                     }
 
-                    $template = str_replace('.', DS, $controller) . $depr . $template;
+                    $template = str_replace('.', $depr, $controller) . $depr . $template;
                 } elseif (false === strpos($template, $depr)) {
-                    $template = str_replace('.', DS, $controller) . $depr . $template;
+                    $template = str_replace('.', $depr, $controller) . $depr . $template;
                 }
             }
         } else {
             $template = str_replace(['/', ':'], $depr, substr($template, 1));
         }
 
-        $template = $path . ltrim($template, '/') . '.' . ltrim($this->config['suffix'], '.');
+        $template = $path . ltrim($template, '/') . '.' . ltrim($this->config['view_suffix'], '.');
 
         if (is_file($template)) {
             return $template;
@@ -391,18 +344,25 @@ class Factory implements FactoryContract
 
         // 未设置主题, 尝试先去default查找
         if(empty($this->config['theme'])) {
-
-            $default = str_replace(DS .'view'. DS, DS .'view'. DS .'default'. DS, $template);
+            $default = str_replace(
+                $depr .'view'. $depr,
+                $depr .'view'. $depr .'default'. $depr,
+                $template
+            );
 
             if (is_file($default)) {
                 return $default;
             }
         }
 
-        // 默认主题不存在模版, 降级删除default主题继续查找
-        if (strpos($template, DS .'view'. DS . 'default' . DS) !== false) {
 
-            $default = str_replace(DS .'view'. DS . 'default' . DS, DS .'view'. DS, $template);
+        // 默认主题不存在模版, 降级删除default主题继续查找
+        if (strpos($template, $depr .'view'. $depr . 'default' . $depr) !== false) {
+            $default = str_replace(
+                $depr .'view'. $depr .'default'. $depr,
+                $depr .'view'. $depr,
+                $template
+            );
 
             if (is_file($default)) {
                 return $default;
@@ -410,11 +370,11 @@ class Factory implements FactoryContract
         }
 
         // 已设置主题, 但是找不到模版, 尝试降级为default主题
-        if (strpos($template, DS .'view'. DS . $this->config['theme'] . DS) !== false) {
-
+        if (strpos($template, $depr .'view'. $depr . $this->config['theme'] . $depr) !== false) {
             $default = str_replace(
-                DS . $this->config['theme'] . DS,
-                DS . 'default' . DS, $template
+                $depr . $this->config['theme'] . $depr,
+                $depr .'default'. $depr,
+                $template
             );
 
             if (is_file($default)) {
@@ -423,26 +383,6 @@ class Factory implements FactoryContract
         }
 
         return '';
-    }
-
-    /**
-     * Normalize the given template.
-     *
-     * @param  string  $name
-     * @return string
-     */
-    private function viewName($template = '', $isRaw = false)
-    {
-
-        if($isRaw && strpos($template, '/')) {
-            return str_replace('/', '.', $template);
-        }
-
-        if (strpos($template, '.')) {
-            $template = str_replace('.', '/', $template);
-        }
-
-        return $template;
     }
 
     /**
@@ -875,5 +815,10 @@ class Factory implements FactoryContract
      */
     public function callCreator($view)
     {
+    }
+
+    public function __call($method, $params)
+    {
+        return call_user_func_array([$this->app->get('blade.compiler'), $method], $params);
     }
 }

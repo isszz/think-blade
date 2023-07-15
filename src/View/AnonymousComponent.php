@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Illuminate\View;
 
@@ -49,7 +50,6 @@ class AnonymousComponent extends Component
     public function data()
     {
         $this->attributes = $this->attributes ?: $this->newAttributeBag();
-
         return array_merge(
             ($this->data['attributes'] ?? null)?->getAttributes() ?: [],
             $this->attributes->getAttributes(),
