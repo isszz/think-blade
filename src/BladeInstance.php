@@ -34,6 +34,11 @@ class BladeInstance
     private $path;
 
     /**
+     * string The cache path for views.
+     */
+    private $cachePath;
+    
+    /**
      * bool The default Whether to enable cacheing.
      */
     private $isCache;
